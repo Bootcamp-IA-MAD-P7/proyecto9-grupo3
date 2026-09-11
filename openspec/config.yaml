@@ -2,14 +2,15 @@ schema: spec-driven
 
 context: |
   Project: an evidence-backed NLP tool that helps YouTube moderators prioritize
-  English comments for human review.
+  comments for human review.
   Team: Gabriela, Miguel, and Fernanda have equal development standing.
   Jira project: SP. Every material change must trace to SP-<number>.
   Delivery target: AWS, deployed early through infrastructure coordinated with
   Miguel. Deployment details are not yet fixed.
-  Product boundary: sentiment and harmful-content risk are separate signals.
-  When evidence or conversational context is insufficient, abstain and recommend
-  human review. Never perform YouTube moderation automatically.
+  Product boundary: sentiment, toxicity, harmful-content risk, and policy
+  violations are separate signals. English as the initial language and
+  abstention under uncertainty are product hypotheses until the team validates
+  them. Never perform YouTube moderation automatically.
   Standards: read docs/base-standards.md before creating or applying artifacts.
   Code and identifiers use English. Product discussion may use Spanish.
 
