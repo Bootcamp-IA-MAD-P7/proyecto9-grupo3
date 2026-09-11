@@ -56,4 +56,3 @@ Immediately before writing:
 5. Return a concise summary of exactly what changed.
 
 Do not create additional stories, subtasks, or dependencies implicitly.
-

@@ -80,4 +80,3 @@ OpenSpec generates Codex skills under `.agents/skills/`. The core flow is:
 
 The exact OpenSpec invocation may vary by Codex version; generated skills are the
 authoritative interface.
-

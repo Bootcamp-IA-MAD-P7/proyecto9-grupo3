@@ -7,7 +7,7 @@
 | Jira | priority, ownership, workflow state, product acceptance criteria |
 | OpenSpec | agreed behavioral contract, scenarios, design, implementation tasks |
 | Git | code, tests, standards, evidence, decision history |
-| AWS | deployed runtime evidence |
+| AWS | future runtime evidence; architecture not yet selected |
 
 `docs/base-standards.md` is the canonical repository standard. `AGENTS.md` is a
 short discovery entrypoint so rules are not duplicated across agent files.
@@ -26,7 +26,10 @@ short discovery entrypoint so rules are not duplicated across agent files.
 ## Product-safety rules
 
 - Sentiment and harmful-content risk are separate signals.
-- When context is insufficient, the system abstains and recommends human review.
+- Abstaining and recommending human review when context is insufficient is a
+  product hypothesis to validate, not mandatory MVP behavior.
+- English as the initial language is a dataset-based hypothesis, not an accepted
+  product requirement.
 - Irreversible or external platform actions always require explicit human
   confirmation and appropriate authorization.
 - A future YouTube integration starts in a test channel and remains optional for
@@ -39,4 +42,3 @@ incremental work, and adversarial verification. Adapt language, testing, and
 technology rules to a Python NLP product. Do not adopt Claude-specific model
 settings, fixed TypeScript rules, mandatory database steps, or a universal
 coverage percentage without project evidence.
-

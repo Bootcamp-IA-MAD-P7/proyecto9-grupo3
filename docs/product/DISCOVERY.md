@@ -31,4 +31,3 @@ No presentar la solución antes de entender el comportamiento actual.
 - Riesgo principal y experimento para reducirlo.
 - Boceto del recorrido feliz y estados vacío, carga, error y baja confianza.
 - Criterio de éxito medible para la demo.
-

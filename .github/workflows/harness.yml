@@ -20,4 +20,3 @@ jobs:
           python-version: "3.12"
       - name: Validate harness and traceability
         run: python scripts/validate_harness.py
-

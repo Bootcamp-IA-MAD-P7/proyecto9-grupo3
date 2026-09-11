@@ -34,17 +34,19 @@ it.
 - **WHEN** tests pass but one acceptance criterion has no evidence
 - **THEN** the change remains incomplete
 
-### Requirement: Safe uncertainty handling
+### Requirement: Product hypotheses remain non-binding
 
-The moderation product SHALL distinguish a negative prediction from a harmful
-content decision and SHALL abstain when the available evidence is insufficient.
+The harness SHALL distinguish accepted team decisions from unvalidated product
+or architecture hypotheses. English as the initial language, abstention under
+uncertainty, and the AWS architecture are currently hypotheses and SHALL NOT be
+treated as mandatory implementation requirements.
 
-#### Scenario: A comment is context-dependent
+#### Scenario: A hypothesis is recorded before validation
 
-- **WHEN** an isolated comment cannot be classified responsibly without its
-  conversational context
-- **THEN** the system reports insufficient context
-- **AND** recommends human review instead of asserting harmful intent
+- **WHEN** the team records a proposed language, uncertainty behavior, or AWS
+  architecture without sufficient product or technical evidence
+- **THEN** the proposal is explicitly labeled as a hypothesis
+- **AND** implementation is not blocked by treating it as an accepted requirement
 
 ### Requirement: Human control of external actions
 
@@ -67,4 +69,3 @@ harness structure and pull-request traceability.
 
 - **WHEN** a pull request branch or description has no `SP-<number>` reference
 - **THEN** the harness check fails with an actionable explanation
-

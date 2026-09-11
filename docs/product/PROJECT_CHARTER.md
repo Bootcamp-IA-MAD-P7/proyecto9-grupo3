@@ -7,21 +7,24 @@ Documento inicial. Las hipótesis de producto deben validarse durante Discovery.
 ## Equipo
 
 Gabriela, Miguel y Fernanda comparten responsabilidad de producto, desarrollo,
-calidad y documentación. Los roles rotan por historia para distribuir aprendizaje
-y evitar silos.
+calidad y documentación. Cada integrante mantiene un foco principal durante el
+proyecto; la revisión, el pairing y la participación transversal rotan por
+historia para distribuir aprendizaje y evitar silos.
 
 ## Plazo y restricciones
 
 - 7 días hábiles.
 - Repositorio Git existente y entorno `.venv` ya creado.
-- Despliegue temprano en AWS mediante la infraestructura facilitada por Miguel.
+- Hipótesis operativa: desplegar temprano en AWS mediante la infraestructura
+  facilitada por Miguel puede acelerar el aprendizaje. La arquitectura todavía
+  no está seleccionada.
 - Jira será el sistema de seguimiento; Git será la fuente de verdad técnica.
 
 ## Resultado buscado
 
 Entregar un producto de análisis de sentimientos que resuelva un problema de
 usuario validado, comunique con claridad la confianza y las limitaciones del
-modelo, y pueda demostrarse en un entorno AWS.
+modelo y, si se valida la hipótesis operativa, pueda demostrarse en AWS.
 
 ## Principios
 
@@ -46,5 +49,5 @@ modelo, y pueda demostrarse en un entorno AWS.
 - Dataset sesgado, pequeño o con licencia inadecuada.
 - Mostrar predicciones como certezas cuando el lenguaje es ambiguo.
 - Dependencia tardía de AWS o de credenciales de terceros.
+- Seleccionar una arquitectura AWS antes de conocer las necesidades del producto.
 - Alcance excesivo para siete días.
-

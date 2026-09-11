@@ -11,7 +11,7 @@
 |---|---|
 | OpenSpec strict validation | PASS — 1 change passed, 0 failed |
 | Repository harness validator | PASS |
-| `git diff --check` | PASS |
+| `git diff --check HEAD` | PASS — EOF whitespace cleaned in affected files |
 | `enrich-jira-story` official skill validator | PASS |
 | `adversarial-review` official skill validator | PASS |
 
@@ -25,7 +25,7 @@ development.
 
 ## Not yet verified
 
-- GitHub Actions has not run remotely because the branch has not been pushed.
-- A teammate has not yet reviewed the standards or OpenSpec change.
-- GitHub branch protection and Jira automation remain intentionally unchanged.
-
+- Confirm the GitHub Actions result for the pushed branch.
+- Obtain final approval from Miguel or Gabriela before merge.
+- GitHub branch protection, required review, Jira automation, strict OpenSpec CI,
+  stack-specific checks, and AWS architecture remain follow-up work.

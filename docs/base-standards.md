@@ -7,8 +7,10 @@ and coding agents working in this repository.
 
 Build an evidence-backed tool that helps YouTube moderators prioritize comments
 for human review. Gabriela, Miguel, and Fernanda have equal development standing.
-A Jira owner coordinates a story; ownership does not grant unilateral product or
-technical authority.
+Each contributor maintains a primary focus during the project. Review, pairing,
+and cross-functional participation rotate by story. A Jira owner coordinates a
+story; neither focus nor ownership grants unilateral product or technical
+authority.
 
 Every contributor must be able to explain the product, data, model, architecture,
 quality evidence, and deployment at an appropriate level.
@@ -20,7 +22,8 @@ quality evidence, and deployment at an appropriate level.
 - OpenSpec owns the versioned behavioral contract, scenarios, technical design,
   and implementation tasks.
 - Git owns implementation, tests, standards, decisions, and evidence.
-- Deployed AWS behavior is operational evidence, never a substitute for the spec.
+- If the product is deployed to AWS, its behavior is operational evidence, never
+  a substitute for the spec. The AWS architecture has not been selected yet.
 
 When artifacts disagree, stop and reconcile them. Do not silently choose one.
 
@@ -83,10 +86,12 @@ A story is ready only when it has:
   concepts. Never present one as proof of another.
 - Predictions expose model version, label, and interpretable confidence or
   uncertainty information.
-- When evidence or conversational context is insufficient, abstain and recommend
-  human review. Do not invent harmful intent.
-- English is the MVP language because it matches the current dataset assumption.
-  Spanish remains an experiment until evaluated with appropriate data.
+- Product hypothesis: when evidence or conversational context is insufficient,
+  an abstention response that recommends human review may reduce unsupported
+  conclusions. This behavior must be validated before becoming a requirement.
+- Product hypothesis: English may be the initial language because it matches the
+  currently available dataset. Language scope remains a team decision; Spanish
+  requires appropriate data and evaluation.
 - Dataset licenses, provenance, class definitions, missingness, duplicates,
   leakage, imbalance, and subgroup behavior must be documented before claims.
 - Thresholds must be justified with validation evidence and the cost of errors;
@@ -123,4 +128,3 @@ or security risks, missing acceptance evidence, and unauthorized external action
   convention before presentation.
 - Record why a decision was made, alternatives considered, and what evidence could
   change it.
-

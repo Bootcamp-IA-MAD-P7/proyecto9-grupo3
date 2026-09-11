@@ -14,11 +14,14 @@ to prevent AI-assisted work from silently changing agreed product scope.
 - Add a collaborative Jira story enrichment skill.
 - Add an independent adversarial review skill.
 - Add pull-request and automated structural quality gates.
-- Encode human-in-the-loop and uncertainty rules for the moderation product.
+- Encode human control of external actions and distinguish accepted rules from
+  unvalidated product hypotheses.
 
 ## Non-goals
 
 - Choosing the final application architecture or ML model.
+- Selecting the AWS architecture, initial product language, or final uncertainty
+  behavior before product and data validation.
 - Enforcing stack-specific lint, typing, or coverage before the stack is chosen.
 - Automatically changing Jira stories, merging pull requests, deploying to AWS,
   or performing actions on YouTube without explicit human authorization.
@@ -30,4 +33,3 @@ to prevent AI-assisted work from silently changing agreed product scope.
 - Epic: SP-1
 - Owner in Jira: Miguel Redondo
 - Working branch: `feature/SP-10-project-harness`
-

@@ -34,4 +34,3 @@ and test-environment evidence for any external action. -->
 ## Learning
 
 <!-- What assumption changed, and what evidence changed it? -->
-

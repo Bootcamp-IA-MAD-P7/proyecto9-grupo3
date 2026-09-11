@@ -143,4 +143,3 @@ if __name__ == "__main__":
             print(f"- {failure}")
         sys.exit(1)
     print("Harness validation passed.")
-

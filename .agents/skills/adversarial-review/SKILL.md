@@ -48,4 +48,3 @@ Provide:
 Any blocker or major finding produces `FAIL`. Do not dilute findings with generic
 praise. Never fix, merge, deploy, archive, or write to external systems unless the
 user separately authorizes that action.
-
