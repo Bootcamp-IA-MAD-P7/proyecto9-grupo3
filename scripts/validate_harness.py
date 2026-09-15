@@ -25,6 +25,7 @@ BRANCH_PATTERN = re.compile(
 )
 INTEGRATION_BRANCHES = {"dev", "main"}
 JIRA_PATTERN = re.compile(r"\bSP-\d+\b", re.IGNORECASE)
+CANONICAL_REPOSITORY = "Bootcamp-IA-MAD-P7/proyecto9-grupo3"
 
 
 def read(relative_path: str) -> str:
@@ -76,11 +77,20 @@ def validate_pull_request() -> list[str]:
     pull_request = payload.get("pull_request", {})
     title = pull_request.get("title") or ""
     body = pull_request.get("body") or ""
-    head = pull_request.get("head", {}).get("ref") or ""
+    head_details = pull_request.get("head", {})
+    head = head_details.get("ref") or ""
+    head_repository = head_details.get("repo") or {}
+    head_repository_name = head_repository.get("full_name") or ""
     base = pull_request.get("base", {}).get("ref") or ""
     errors: list[str] = []
-    if base == "main" and head != "dev":
-        errors.append("Pull requests into main must promote the dev branch.")
+    if base == "main":
+        if head != "dev":
+            errors.append("Pull requests into main must promote the dev branch.")
+        if head_repository_name.casefold() != CANONICAL_REPOSITORY.casefold():
+            errors.append(
+                "Pull requests into main must promote dev from "
+                f"{CANONICAL_REPOSITORY}."
+            )
     if base != "main" and not BRANCH_PATTERN.fullmatch(head):
         errors.append(
             "PR branch must match <type>/SP-<number>-<short-description>."
