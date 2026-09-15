@@ -41,6 +41,19 @@ authors.
 - **WHEN** a high-risk comment is shown to the moderator
 - **THEN** the system offers a human review decision and performs no external YouTube action
 
+### Requirement: Review state is local and reversible
+The MVP SHALL let the moderator mark a comment as reviewed and undo that mark.
+This state MUST remain local to the product and MUST NOT represent or trigger an
+action on YouTube.
+
+#### Scenario: Moderator marks a comment as reviewed
+- **WHEN** the moderator marks a queue item as reviewed
+- **THEN** the interface visibly records the local reviewed state without changing YouTube
+
+#### Scenario: Moderator reverses the review mark
+- **WHEN** the moderator undoes a reviewed mark
+- **THEN** the comment returns to its prior local state without changing its model result
+
 ### Requirement: Core UX states are reviewable
 The primary journey SHALL have observable loading, success, empty, and error
 states. A model or data failure MUST NOT be presented as an empty or successful

@@ -58,6 +58,13 @@ reuse the same output language and must not displace the queue. Direct YouTube
 ingestion is deferred because OAuth, permissions, quota, and user-impact safety
 would consume the short delivery window.
 
+### Keep the review mark local and reversible
+
+The MVP records only whether a queue item has been reviewed and allows that mark
+to be undone. It does not encode a YouTube action or change the model output.
+The persistence mechanism remains an implementation choice as long as the state
+does not leave the product or imply external moderation.
+
 ### Keep source data local until usage rights are confirmed
 
 The repository may contain aggregate, non-text dataset evidence but not the raw

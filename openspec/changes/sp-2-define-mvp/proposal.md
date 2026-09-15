@@ -10,6 +10,9 @@ decide which dataset comment to review first.
 - Define the primary MVP journey as a dataset-backed review queue ordered by the
   model's estimated probability of `IsToxic`.
 - Define pasted-comment analysis as a secondary journey.
+- Define the moderator as the only operational MVP persona.
+- Allow a moderator to mark a review locally and reverse that mark without any
+  external platform action.
 - Use toxicity language and explicitly distinguish it from sentiment, hate
   speech, harmful-content risk, and platform policy violations.
 - Capture measurable product, UX, model, safety, and learning outcomes without
@@ -22,6 +25,8 @@ decide which dataset comment to review first.
 
 - Jira story: SP-2, under epic SP-1.
 - The team selected a prioritized dataset queue as the primary MVP journey.
+- The team confirmed the moderator as the only operational MVP persona and a
+  local, reversible review mark as the only recorded moderation state.
 - `youtoxic_english_1000.csv` contains 1,000 complete rows across 13 videos;
   `IsToxic` has 462 positive and 538 negative labels.
 - Several subclasses have between zero and 21 positive examples, and the source
@@ -37,7 +42,6 @@ decide which dataset comment to review first.
 
 ### Open questions
 
-- Which secondary persona, if any, matters for the MVP?
 - What UX success target and test population are credible within seven days?
 - What model threshold or queue size supports the moderation task?
 - Does the dataset license permit repository redistribution?

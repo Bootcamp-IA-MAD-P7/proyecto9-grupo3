@@ -16,3 +16,4 @@
 - [ ] 3.1 Refine SP-20 around grouped evaluation by `VideoId` and `IsToxic`.
 - [ ] 3.2 Refine SP-34/SP-50/SP-54 against the queue and output contract.
 - [ ] 3.3 Implement only through a new OpenSpec apply request after approval.
+- [ ] 3.4 Implement and verify the local, reversible reviewed mark without external actions.
