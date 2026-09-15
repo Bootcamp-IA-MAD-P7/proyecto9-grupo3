@@ -113,9 +113,42 @@ class ValidatePullRequestTests(unittest.TestCase):
             body="- **Jira:** SP-13\n- **OpenSpec:** N/A",
         )
         self.assertIn(
-            "OpenSpec must link openspec/changes/ or use N/A — <non-material reason>.",
+            "OpenSpec must use openspec/changes/<change-name>/ or N/A — <non-material reason>.",
             errors,
         )
+
+    def test_rejects_an_incomplete_openspec_path(self) -> None:
+        errors = self.pull_request_errors(
+            "docs: clarify contribution guide",
+            body="- **Jira:** SP-13\n- **OpenSpec:** openspec/changes/",
+        )
+        self.assertIn(
+            "OpenSpec must use openspec/changes/<change-name>/ or N/A — <non-material reason>.",
+            errors,
+        )
+
+    def test_rejects_arbitrary_text_containing_an_openspec_path(self) -> None:
+        errors = self.pull_request_errors(
+            "docs: clarify contribution guide",
+            body=(
+                "- **Jira:** SP-13\n"
+                "- **OpenSpec:** arbitrary text openspec/changes/sp-57-validate-conventional-commits/"
+            ),
+        )
+        self.assertIn(
+            "OpenSpec must use openspec/changes/<change-name>/ or N/A — <non-material reason>.",
+            errors,
+        )
+
+    def test_rejects_a_nonexistent_openspec_path(self) -> None:
+        errors = self.pull_request_errors(
+            "docs: clarify contribution guide",
+            body=(
+                "- **Jira:** SP-13\n"
+                "- **OpenSpec:** `openspec/changes/nonexistent-change/`"
+            ),
+        )
+        self.assertIn("OpenSpec path must exist in this repository.", errors)
 
     def test_rejects_a_missing_jira_field(self) -> None:
         errors = self.pull_request_errors(

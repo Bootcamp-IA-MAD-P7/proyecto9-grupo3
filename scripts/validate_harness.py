@@ -36,6 +36,9 @@ OPENSPEC_FIELD_PATTERN = re.compile(
     r"(?mi)^-\s+(?:\*\*)?OpenSpec:\s*(?:\*\*)?\s*(.+?)\s*$"
 )
 NON_MATERIAL_OPENSPEC_PATTERN = re.compile(r"^N/A\s*[—-]\s*\S.*$", re.IGNORECASE)
+OPENSPEC_CHANGE_PATH_PATTERN = re.compile(
+    r"^`?(openspec/changes/[a-z0-9][a-z0-9-]*/?)`?$"
+)
 
 
 def read(relative_path: str) -> str:
@@ -119,12 +122,13 @@ def validate_pull_request() -> list[str]:
         errors.append("PR body must include an OpenSpec field.")
     else:
         openspec_value = openspec_field.group(1).strip("` ")
-        if (
-            "openspec/changes/" not in openspec_value
-            and not NON_MATERIAL_OPENSPEC_PATTERN.fullmatch(openspec_value)
-        ):
+        openspec_path = OPENSPEC_CHANGE_PATH_PATTERN.fullmatch(openspec_value)
+        if openspec_path:
+            if not (ROOT / openspec_path.group(1)).is_dir():
+                errors.append("OpenSpec path must exist in this repository.")
+        elif not NON_MATERIAL_OPENSPEC_PATTERN.fullmatch(openspec_value):
             errors.append(
-                "OpenSpec must link openspec/changes/ or use "
+                "OpenSpec must use openspec/changes/<change-name>/ or "
                 "N/A — <non-material reason>."
             )
     return errors

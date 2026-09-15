@@ -12,10 +12,12 @@ traceability, outcome, acceptance criteria, validation, data/security/operations
 risks/rollback, and review. The Jira and OpenSpec fields are required by the
 existing Python validator.
 
-The OpenSpec value is valid when it includes `openspec/changes/`, or when it is
-`N/A — <non-empty reason>`. The validator checks only presence and structure.
-It cannot determine whether a change is genuinely non-material; the author must
-state the reason and the independent reviewer must assess it.
+The OpenSpec value is valid when it matches
+`openspec/changes/<lowercase-kebab-case-change>/`, optionally wrapped in
+backticks, and that directory exists in the repository. It may instead be
+`N/A — <non-empty reason>`. The validator checks path structure and local
+existence, but cannot determine whether a change is genuinely non-material; the
+author must state the reason and the independent reviewer must assess it.
 
 ## Alternatives considered
 

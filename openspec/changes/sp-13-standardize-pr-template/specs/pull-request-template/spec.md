@@ -17,10 +17,12 @@ SHALL include a Jira field containing an `SP-<number>` key.
 ### Requirement: OpenSpec traceability is explicit and proportionate
 
 Each PR body SHALL include an OpenSpec field. The field SHALL link an
-`openspec/changes/` path for a material change, or use
+existing `openspec/changes/<lowercase-kebab-case-change>/` repository path for
+a material change, or use
 `N/A — <non-empty reason>` for a non-material change. The harness SHALL reject
-a missing field or an unexplained `N/A`; an independent reviewer SHALL assess
-whether a non-material justification is appropriate.
+a missing field, an invalid or nonexistent path, or an unexplained `N/A`; an
+independent reviewer SHALL assess whether a non-material justification is
+appropriate.
 
 #### Scenario: A material harness change is proposed
 
@@ -38,6 +40,12 @@ whether a non-material justification is appropriate.
 
 - **WHEN** a PR body lacks the OpenSpec field or gives `N/A` without a reason
 - **THEN** the harness fails with an actionable message
+
+#### Scenario: An OpenSpec value is not a repository path
+
+- **WHEN** the OpenSpec field contains arbitrary text, an incomplete path, an
+  external link, or a nonexistent change directory
+- **THEN** the harness rejects the value as invalid OpenSpec traceability
 
 ### Requirement: Existing gates remain independent
 
