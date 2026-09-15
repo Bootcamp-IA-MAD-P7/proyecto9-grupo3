@@ -114,6 +114,11 @@ A story is ready only when it has:
   review the evidence and confirm the exact action.
 - Never commit credentials, tokens, personal data, raw sensitive text, or `.env`.
 
+Repository security: never version credentials, tokens, `.env` files, personal
+data, real dataset comments, or local datasets without confirmed licensing.
+The lightweight harness checks sensitive file names and reserved local-data
+paths; it does not inspect file contents for secrets.
+
 ## 9. Verification and review
 
 Testing depth follows risk rather than a universal coverage number. Start with a
