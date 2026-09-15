@@ -61,7 +61,7 @@ gestionan en sus subtareas específicas.
 Ejecuta antes de solicitar revisión:
 
 ```powershell
-python scripts\validate_harness.py
+python scripts/validate_harness.py
 git diff --check
 ```
 
