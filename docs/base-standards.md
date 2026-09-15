@@ -33,12 +33,13 @@ When artifacts disagree, stop and reconcile them. Do not silently choose one.
 2. Enrich unclear stories collaboratively; separate questions from proposals.
 3. Obtain team agreement on scope, non-goals, acceptance criteria, and UX impact.
 4. Create or update `openspec/changes/<jira-key>-<slug>/` for material changes.
-5. Work on `<type>/<JIRA-KEY>-<short-description>` from an up-to-date `main`.
+5. Work on `<type>/<JIRA-KEY>-<short-description>` from an up-to-date `dev`.
 6. Implement the smallest useful slice with tests and reviewable evidence.
 7. Verify every acceptance scenario and perform an independent review.
-8. Open a PR linking Jira, OpenSpec, tests, evidence, risks, and rollback.
+8. Open a PR into `dev`, linking Jira, OpenSpec, tests, evidence, risks, and rollback.
 9. Merge only with required checks green and approval from another teammate.
-10. Deploy only when authorized; verify the deployed behavior and update Jira.
+10. Deploy authorized learning/demo builds from `dev`; promote the accepted final
+    release to protected `main`.
 
 Allowed branch types are `feature`, `fix`, `docs`, `test`, `ci`, and `chore`.
 Use Conventional Commits in English. Prefer squash merge for a focused Jira item.
