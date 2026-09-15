@@ -22,3 +22,5 @@ datasets/
 Thumbs.db
 dist/
 build/
+*.joblib
+data/raw/
