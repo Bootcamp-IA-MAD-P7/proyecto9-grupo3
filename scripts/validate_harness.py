@@ -39,6 +39,29 @@ NON_MATERIAL_OPENSPEC_PATTERN = re.compile(r"^N/A\s*[—-]\s*\S.*$", re.IGNORECA
 OPENSPEC_CHANGE_PATH_PATTERN = re.compile(
     r"^`?(openspec/changes/[a-z0-9][a-z0-9-]*/?)`?$"
 )
+SENSITIVE_FILENAMES = {"credentials.json", "service-account.json", "secrets.json"}
+SENSITIVE_DATA_DIRECTORIES = {"data/local", "data/raw", "data/private", "datasets"}
+
+
+def is_sensitive_path(relative_path: str) -> bool:
+    """Return whether a tracked path is reserved for secrets or real data."""
+    normalized = relative_path.replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    normalized = normalized.lstrip("/")
+    path = Path(normalized)
+    name = path.name
+    if name == ".env" or (name.startswith(".env.") and name != ".env.example"):
+        return True
+    if name in SENSITIVE_FILENAMES or name.startswith("service-account-"):
+        return True
+    if path.suffix.lower() in {".pem", ".key"}:
+        return True
+    parts = path.parts
+    return any(
+        "/".join(parts[index : index + 2]) in SENSITIVE_DATA_DIRECTORIES
+        for index in range(len(parts) - 1)
+    )
 
 
 def read(relative_path: str) -> str:
@@ -177,9 +200,8 @@ def validate() -> list[str]:
         )
 
     for tracked in tracked_files():
-        name = Path(tracked).name
-        if name == ".env" or (name.startswith(".env.") and name != ".env.example"):
-            errors.append(f"Sensitive environment file is tracked: {tracked}")
+        if is_sensitive_path(tracked):
+            errors.append(f"Sensitive or real-data path is tracked: {tracked}")
 
     errors.extend(validate_pull_request())
     return errors

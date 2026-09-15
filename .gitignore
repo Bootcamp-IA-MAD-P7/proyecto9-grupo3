@@ -7,6 +7,15 @@ htmlcov/
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+secrets.json
+data/local/
+data/raw/
+data/private/
+datasets/
 .idea/
 .vscode/
 .DS_Store

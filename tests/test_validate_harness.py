@@ -156,3 +156,24 @@ class ValidatePullRequestTests(unittest.TestCase):
             body="- **OpenSpec:** N/A — documentation-only clarification",
         )
         self.assertIn("PR body must include a Jira field with an SP-<number> key.", errors)
+
+
+class SensitivePathTests(unittest.TestCase):
+    def test_rejects_env_file(self) -> None:
+        self.assertTrue(validate_harness.is_sensitive_path(".env"))
+
+    def test_rejects_local_env_file(self) -> None:
+        self.assertTrue(validate_harness.is_sensitive_path("config/.env.local"))
+
+    def test_allows_env_example(self) -> None:
+        self.assertFalse(validate_harness.is_sensitive_path(".env.example"))
+
+    def test_rejects_key_or_credentials(self) -> None:
+        self.assertTrue(validate_harness.is_sensitive_path("certs/private.key"))
+        self.assertTrue(validate_harness.is_sensitive_path("credentials.json"))
+
+    def test_rejects_reserved_local_data_path(self) -> None:
+        self.assertTrue(validate_harness.is_sensitive_path("data/raw/comments.csv"))
+
+    def test_allows_normal_repository_file(self) -> None:
+        self.assertFalse(validate_harness.is_sensitive_path("docs/README.md"))
