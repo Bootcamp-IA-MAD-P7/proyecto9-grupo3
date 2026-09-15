@@ -43,8 +43,10 @@ When artifacts disagree, stop and reconcile them. Do not silently choose one.
 
 Allowed branch types are `feature`, `fix`, `docs`, `test`, `ci`, and `chore`.
 Use Conventional Commits in English. The title of every PR must use that format:
-with squash merge, it represents the final integrated commit. Prefer squash merge
-for a focused Jira item.
+with squash merge, it represents the final integrated commit. Every PR integrated
+into `dev` or `main` uses squash merge. GitHub permits only squash merge: merge
+commit and rebase merge are disabled, preserving linear, traceable history for
+focused Jira changes.
 Every PR uses the repository template. Its OpenSpec field must link the material
 change or state `N/A — <reason>` for a non-material change; reviewers decide
 whether that justification is valid.
