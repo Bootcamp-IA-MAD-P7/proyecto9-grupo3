@@ -8,8 +8,8 @@ by default, reducing the chance that a focused PR waits for an unassigned review
 
 - Add one repository-wide CODEOWNERS rule for `@miguelRedondoWeb`, `@fer-trk`,
   and `@gabrielagranja`.
-- Preserve the existing single independent-approval rule; both people are
-  requested, but one approval remains sufficient.
+- Preserve the existing single independent-approval rule; all three contributors
+  are requested, but one approval remains sufficient.
 
 ## Non-goals
 

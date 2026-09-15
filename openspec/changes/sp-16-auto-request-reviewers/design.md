@@ -22,6 +22,6 @@ before merge.
 ## Verification and rollback
 
 Verify the file contains the exact GitHub handles and has one wildcard rule.
-After merge, open a small PR and confirm GitHub requests both reviewers. Revert
+After merge, open a small PR and confirm GitHub requests all three reviewers. Revert
 the CODEOWNERS commit to remove automatic requests; branch-protection review
 requirements remain unchanged.
