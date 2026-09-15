@@ -1,0 +1,116 @@
+# Moderación asistida de comentarios
+
+> Proyecto NLP clásico para apoyar la revisión humana de comentarios en inglés mediante una señal de riesgo estimado de toxicidad.
+
+| Estado | Entrega objetivo | Enfoque |
+| --- | --- | --- |
+| En definición - Sprint 1 | MVP demostrable y reproducible | Human-in-the-Loop |
+
+## Índice
+
+- [Problema](#problema)
+- [Solución propuesta](#solución-propuesta)
+- [Alcance del MVP](#alcance-del-mvp)
+- [Arquitectura objetivo](#arquitectura-objetivo)
+- [Pipeline de datos y modelo](#pipeline-de-datos-y-modelo)
+- [Calidad y reproducibilidad](#calidad-y-reproducibilidad)
+- [Estructura del proyecto](#estructura-del-proyecto)
+- [Documentación](#documentación)
+- [Hoja de ruta](#hoja-de-ruta)
+
+## Problema
+
+La revisión manual de comentarios puede dedicar tiempo a contenido de bajo riesgo mientras casos potencialmente dañinos esperan atención. Este proyecto explora una herramienta que ayude a una persona moderadora a decidir qué comentario revisar primero sin delegar la decisión de moderación en un modelo.
+
+## Solución propuesta
+
+El MVP recibirá comentarios en inglés y devolverá una señal de **riesgo estimado de toxicidad** para el objetivo inicial `IsToxic`. La predicción es una ayuda para la revisión, no un veredicto, una medida de gravedad ni una decisión sobre las políticas de YouTube.
+
+## Alcance del MVP
+
+| Incluido | Fuera de alcance |
+| --- | --- |
+| Comentarios en inglés del dataset `youtoxic_english_1000.csv` | Importar comentarios desde YouTube o monitorizar en tiempo real |
+| Clasificación inicial de `IsToxic` | Eliminar, bloquear, denunciar o sancionar contenido o autores |
+| Cola ordenada por riesgo estimado y análisis manual de texto pegado | Sentimiento, español y subcategorías no validadas |
+| Estados de carga, resultado y error recuperable | Presentar la predicción como certeza o infracción de políticas |
+| Decisión final de moderación en manos de la persona usuaria | Generalizar los resultados a todo YouTube |
+
+## Arquitectura objetivo
+
+La arquitectura siguiente describe el vertical slice previsto para el MVP. Se implementará progresivamente durante el proyecto.
+
+```mermaid
+flowchart LR
+    U[Persona moderadora] --> UI[Interfaz de revisión]
+    UI --> V[Validación de entrada]
+    V --> P[Pipeline NLP versionado]
+    P --> R[Riesgo estimado de toxicidad]
+    R --> UI
+    UI --> H[Decisión humana fuera del sistema]
+
+    classDef human fill:#F6F8FA,stroke:#57606A,color:#24292F;
+    classDef system fill:#DDF4FF,stroke:#0969DA,color:#0969DA;
+    class U,H human;
+    class UI,V,P,R system;
+```
+
+## Pipeline de datos y modelo
+
+El modelo se construirá con técnicas clásicas de NLP y un flujo reproducible:
+
+```text
+Dataset -> validación de datos -> split reproducible -> preprocesamiento
+       -> vectorización TF-IDF -> clasificador -> evaluación -> artefacto versionado
+```
+
+Las métricas se publicarán cuando exista una línea base evaluada. Incluirán `precision`, `recall`, `F1`, matriz de confusión, resultados separados de train/test y comprobación de posible fuga por `VideoId`.
+
+## Calidad y reproducibilidad
+
+El proyecto se desarrollará con especificaciones verificables, control de versiones y un harness de evaluación reproducible.
+
+| Capa | Evidencia esperada |
+| --- | --- |
+| Datos | Fuente documentada, esquema conocido y división reproducible |
+| Modelo | Métricas, matriz de confusión y artefacto versionado |
+| Aplicación | Validación de entrada, estados de carga y recuperación de errores |
+| Integración | Recorrido de texto a predicción comprobado de extremo a extremo |
+
+No se mostrarán métricas, gráficas de rendimiento ni afirmaciones de calidad hasta que sean producidas por el pipeline de evaluación.
+
+## Estructura del proyecto
+
+La estructura se añadirá junto con la implementación. El destino previsto es:
+
+```text
+.
+├── app/              # Interfaz de demostración
+├── docs/             # Visión, especificaciones y decisiones
+├── models/           # Artefactos de modelo no sensibles/versionados según proceda
+├── src/              # Pipeline de datos, entrenamiento e inferencia
+├── tests/            # Pruebas automatizadas
+├── README.md
+└── requirements.txt
+```
+
+## Documentación
+
+| Documento | Estado | Propósito |
+| --- | --- | --- |
+| Visión de producto | Pendiente de validación e integración de SP-7 | Problema, alcance, riesgos y métricas del MVP |
+| OpenSpec | Pendiente de enlace | Escenarios de comportamiento verificables |
+| Diseño de interfaz | Diferido | Decisiones visuales y de interacción cuando proceda |
+| Resultados de evaluación | Pendiente de SP-20 | Métricas y limitaciones del modelo |
+| Presentación final | Pendiente | Narrativa, demo y conclusiones del proyecto |
+
+## Hoja de ruta
+
+1. Cerrar la visión, alcance y métricas del MVP.
+2. Crear una línea base reproducible para `IsToxic`.
+3. Integrar el modelo en un flujo vertical de demostración.
+4. Validar el recorrido, documentar evidencias y preparar la presentación.
+
+## Equipo
+
+Proyecto desarrollado por el equipo del bootcamp de IA. Las decisiones de producto, modelo y calidad se registrarán en Jira y se vincularán desde esta documentación cuando estén aprobadas.
