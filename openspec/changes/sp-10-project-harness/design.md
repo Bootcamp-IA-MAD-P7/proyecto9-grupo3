@@ -14,14 +14,16 @@ short discovery entrypoint so rules are not duplicated across agent files.
 
 ## Delivery loop
 
-1. Read and collaboratively enrich the Jira story.
+1. Branch from an up-to-date `dev` and collaboratively enrich the Jira story.
 2. Obtain human acceptance of scope and criteria.
 3. Create or update the OpenSpec change.
 4. Implement small tasks with tests and evidence.
 5. Verify each scenario and run an independent adversarial review.
-6. Open a PR linked to Jira and the OpenSpec change.
+6. Open a PR into `dev`, linked to Jira and the OpenSpec change.
 7. Merge only after a teammate approves and required checks pass.
-8. Deploy when authorized, record evidence, and update Jira to reflect reality.
+8. Deploy the authorized AWS learning/demo environment from `dev`, record
+   evidence, and update Jira to reflect reality.
+9. Promote the accepted final release from `dev` to protected `main`.
 
 ## Product-safety rules
 
