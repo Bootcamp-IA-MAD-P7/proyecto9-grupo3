@@ -1,116 +1,176 @@
+<div align="center">
+
 # Moderación asistida de comentarios
 
-> Proyecto NLP clásico para apoyar la revisión humana de comentarios en inglés mediante una señal de riesgo estimado de toxicidad.
+### NLP clásico para priorizar la revisión humana de contenido potencialmente tóxico
 
-| Estado | Entrega objetivo | Enfoque |
-| --- | --- | --- |
-| En definición - Sprint 1 | MVP demostrable y reproducible | Human-in-the-Loop |
+[![Project harness](https://github.com/Bootcamp-IA-MAD-P7/proyecto9-grupo3/actions/workflows/harness.yml/badge.svg?branch=dev)](https://github.com/Bootcamp-IA-MAD-P7/proyecto9-grupo3/actions/workflows/harness.yml)
+![Status](https://img.shields.io/badge/status-foundations_complete-1f883d)
+![Approach](https://img.shields.io/badge/approach-human--in--the--loop-0969da)
+![Language](https://img.shields.io/badge/MVP-English_comments-8250df)
 
-## Índice
+Una herramienta de apoyo para que una persona moderadora identifique antes los
+comentarios que requieren atención, sin delegar la decisión final en el modelo.
 
-- [Problema](#problema)
-- [Solución propuesta](#solución-propuesta)
-- [Alcance del MVP](#alcance-del-mvp)
-- [Arquitectura objetivo](#arquitectura-objetivo)
-- [Pipeline de datos y modelo](#pipeline-de-datos-y-modelo)
-- [Calidad y reproducibilidad](#calidad-y-reproducibilidad)
-- [Estructura del proyecto](#estructura-del-proyecto)
-- [Documentación](#documentación)
-- [Hoja de ruta](#hoja-de-ruta)
+</div>
 
-## Problema
+---
 
-La revisión manual de comentarios puede dedicar tiempo a contenido de bajo riesgo mientras casos potencialmente dañinos esperan atención. Este proyecto explora una herramienta que ayude a una persona moderadora a decidir qué comentario revisar primero sin delegar la decisión de moderación en un modelo.
+## Estado del proyecto
 
-## Solución propuesta
+| Área | Estado | Evidencia actual |
+| --- | :---: | --- |
+| Problema, persona y alcance del MVP | ✅ | [Visión de producto](docs/product-vision.md) |
+| Flujo Jira, Git y pull requests | ✅ | [Guía de contribución](CONTRIBUTING.md) |
+| SDD, OpenSpec y project harness | ✅ | [Project harness](docs/HARNESS.md) |
+| Controles de calidad y seguridad | ✅ | Harness automático y protección de ramas |
+| Línea base del modelo | ⏳ | Pendiente de entrenamiento y evaluación reproducible |
+| Vertical funcional y demo | ⏳ | Pendiente de implementación |
+| Arquitectura y despliegue AWS | ⏳ | Se decidirán con las necesidades del vertical |
 
-El MVP recibirá comentarios en inglés y devolverá una señal de **riesgo estimado de toxicidad** para el objetivo inicial `IsToxic`. La predicción es una ayuda para la revisión, no un veredicto, una medida de gravedad ni una decisión sobre las políticas de YouTube.
+> **Estado verificable:** la base profesional de trabajo está operativa. La
+> aplicación, el modelo evaluado y el despliegue todavía no están implementados.
 
-## Alcance del MVP
+## El problema
 
-| Incluido | Fuera de alcance |
+Revisar comentarios en orden de llegada puede hacer que contenido potencialmente
+dañino espere mientras se atienden casos de menor riesgo. El proyecto explora si
+una cola priorizada permite decidir antes qué comentario revisar.
+
+## La propuesta
+
+El MVP procesará comentarios en inglés y estimará el **riesgo de toxicidad** para
+el objetivo inicial `IsToxic`. La señal servirá para ordenar la revisión; no será
+un veredicto, una medida de gravedad ni una interpretación de las políticas de
+YouTube.
+
+| El sistema ayuda a… | El sistema no… |
 | --- | --- |
-| Comentarios en inglés del dataset `youtoxic_english_1000.csv` | Importar comentarios desde YouTube o monitorizar en tiempo real |
-| Clasificación inicial de `IsToxic` | Eliminar, bloquear, denunciar o sancionar contenido o autores |
-| Cola ordenada por riesgo estimado y análisis manual de texto pegado | Sentimiento, español y subcategorías no validadas |
-| Estados de carga, resultado y error recuperable | Presentar la predicción como certeza o infracción de políticas |
-| Decisión final de moderación en manos de la persona usuaria | Generalizar los resultados a todo YouTube |
+| Priorizar comentarios por riesgo estimado | Elimina, bloquea, denuncia o sanciona |
+| Revisar manualmente texto en inglés | Se conecta a YouTube ni opera en tiempo real |
+| Mantener un orden estable en los empates | Clasifica sentimiento o español |
+| Mostrar resultados y errores comprensibles | Presenta probabilidades como certezas |
+| Conservar la decisión humana final | Sustituye el criterio de moderación |
 
-## Arquitectura objetivo
-
-La arquitectura siguiente describe el vertical slice previsto para el MVP. Se implementará progresivamente durante el proyecto.
+## Recorrido previsto del MVP
 
 ```mermaid
 flowchart LR
-    U[Persona moderadora] --> UI[Interfaz de revisión]
-    UI --> V[Validación de entrada]
-    V --> P[Pipeline NLP versionado]
-    P --> R[Riesgo estimado de toxicidad]
-    R --> UI
-    UI --> H[Decisión humana fuera del sistema]
+    A[Comentario en inglés] --> B[Validación de entrada]
+    B --> C[Pipeline NLP versionado]
+    C --> D[Riesgo estimado de IsToxic]
+    D --> E[Cola priorizada]
+    E --> F[Revisión humana]
+    F --> G[Decisión final fuera del modelo]
 
-    classDef human fill:#F6F8FA,stroke:#57606A,color:#24292F;
-    classDef system fill:#DDF4FF,stroke:#0969DA,color:#0969DA;
-    class U,H human;
-    class UI,V,P,R system;
+    classDef input fill:#f6f8fa,stroke:#57606a,color:#24292f;
+    classDef system fill:#ddf4ff,stroke:#0969da,color:#0550ae;
+    classDef human fill:#dafbe1,stroke:#1a7f37,color:#116329;
+    class A input;
+    class B,C,D,E system;
+    class F,G human;
 ```
 
-## Pipeline de datos y modelo
-
-El modelo se construirá con técnicas clásicas de NLP y un flujo reproducible:
+El pipeline técnico previsto utilizará técnicas clásicas y reproducibles:
 
 ```text
-Dataset -> validación de datos -> split reproducible -> preprocesamiento
-       -> vectorización TF-IDF -> clasificador -> evaluación -> artefacto versionado
+Dataset → validación → split reproducible → preprocesamiento → TF-IDF
+        → clasificador → evaluación → artefacto versionado → inferencia
 ```
 
-Las métricas se publicarán cuando exista una línea base evaluada. Incluirán `precision`, `recall`, `F1`, matriz de confusión, resultados separados de train/test y comprobación de posible fuga por `VideoId`.
+Las métricas se publicarán únicamente cuando hayan sido generadas por el pipeline
+de evaluación: `precision`, `recall`, `F1`, matriz de confusión, resultados de
+train/test y comprobación de posible fuga mediante `VideoId`.
 
-## Calidad y reproducibilidad
+## Cómo trabajamos
 
-El proyecto se desarrollará con especificaciones verificables, control de versiones y un harness de evaluación reproducible.
+El proyecto aplica Specification-Driven Development con una cadena de trazabilidad
+ligera. Cada capa tiene una responsabilidad concreta:
 
-| Capa | Evidencia esperada |
+| Capa | Responsabilidad |
 | --- | --- |
-| Datos | Fuente documentada, esquema conocido y división reproducible |
-| Modelo | Métricas, matriz de confusión y artefacto versionado |
-| Aplicación | Validación de entrada, estados de carga y recuperación de errores |
-| Integración | Recorrido de texto a predicción comprobado de extremo a extremo |
+| Jira | Prioridad, responsable, estado y criterios de aceptación |
+| OpenSpec | Comportamiento verificable, diseño técnico y tareas |
+| Git y PR | Implementación, revisión, pruebas y evidencias |
+| Harness | Reglas automáticas que evitan desviaciones del proceso |
+| AWS | Evidencia futura de ejecución, no sustituto de la especificación |
 
-No se mostrarán métricas, gráficas de rendimiento ni afirmaciones de calidad hasta que sean producidas por el pipeline de evaluación.
+```mermaid
+flowchart LR
+    J[Jira SP-XX] --> S[OpenSpec cuando aplica]
+    S --> B[Rama desde dev]
+    B --> I[Implementación y evidencia]
+    I --> P[Pull request hacia dev]
+    P --> Q[Checks + revisión independiente]
+    Q --> M[Squash merge]
+    M --> D[dev]
+    D -->|release aceptada| R[main]
+```
 
-## Estructura del proyecto
+### Controles aplicados
 
-La estructura se añadirá junto con la implementación. El destino previsto es:
+- Ramas `feature/`, `fix/`, `docs/`, `test/`, `ci/` o `chore/` con clave Jira.
+- Conventional Commits y títulos de PR normalizados en inglés.
+- Plantilla de PR con Jira, OpenSpec, criterios, pruebas, evidencias y rollback.
+- Revisión independiente y check `validate` obligatorios antes del merge.
+- `dev` como rama de integración; `main` reservada para releases aceptadas.
+- Squash merge, historial lineal y bloqueo del push directo.
+- Exclusión de credenciales, `.env`, claves y rutas locales de datos sensibles.
+- Tags y releases diferidos hasta que exista el primer vertical funcional.
+
+## Validación local
+
+El repositorio no necesita dependencias adicionales para comprobar su estructura:
+
+```powershell
+python -m unittest tests.test_validate_harness
+python scripts/validate_harness.py
+git diff --check
+```
+
+## Estructura actual
 
 ```text
 .
-├── app/              # Interfaz de demostración
-├── docs/             # Visión, especificaciones y decisiones
-├── models/           # Artefactos de modelo no sensibles/versionados según proceda
-├── src/              # Pipeline de datos, entrenamiento e inferencia
-├── tests/            # Pruebas automatizadas
-├── README.md
-└── requirements.txt
+├── .agents/                  # Skills reutilizables para agentes
+├── .github/                  # CODEOWNERS, PR template y workflow
+├── docs/                     # Visión, discovery, harness y estándares
+├── openspec/changes/         # Propuestas, diseño, specs y tareas verificables
+├── scripts/                  # Validadores ligeros del repositorio
+├── tests/                    # Pruebas automáticas del harness
+├── AGENTS.md                 # Punto de entrada para agentes
+├── CONTRIBUTING.md           # Guía breve de contribución
+└── README.md                 # Visión general y estado verificable
 ```
+
+La estructura de aplicación, entrenamiento e infraestructura se añadirá cuando
+se apruebe e implemente el primer vertical funcional.
 
 ## Documentación
 
-| Documento | Estado | Propósito |
-| --- | --- | --- |
-| Visión de producto | Pendiente de validación e integración de SP-7 | Problema, alcance, riesgos y métricas del MVP |
-| OpenSpec | Pendiente de enlace | Escenarios de comportamiento verificables |
-| Diseño de interfaz | Diferido | Decisiones visuales y de interacción cuando proceda |
-| Resultados de evaluación | Pendiente de SP-20 | Métricas y limitaciones del modelo |
-| Presentación final | Pendiente | Narrativa, demo y conclusiones del proyecto |
+| Documento | Propósito |
+| --- | --- |
+| [Visión de producto](docs/product-vision.md) | Problema, persona, alcance, métricas y límites del MVP |
+| [Project charter](docs/product/PROJECT_CHARTER.md) | Encargo, contexto y criterio de éxito |
+| [Discovery](docs/product/DISCOVERY.md) | Evidencia e hipótesis de producto |
+| [Estándares base](docs/base-standards.md) | Fuente única de verdad para las normas del equipo |
+| [Project harness](docs/HARNESS.md) | Ciclo SDD, controles y puertas humanas |
+| [Guía de contribución](CONTRIBUTING.md) | Entrada breve al flujo de trabajo |
+| [OpenSpec](openspec/changes/) | Contratos versionados y escenarios verificables |
 
-## Hoja de ruta
+## Próximos hitos
 
-1. Cerrar la visión, alcance y métricas del MVP.
-2. Crear una línea base reproducible para `IsToxic`.
-3. Integrar el modelo en un flujo vertical de demostración.
-4. Validar el recorrido, documentar evidencias y preparar la presentación.
+1. Auditar el dataset y construir una línea base reproducible para `IsToxic`.
+2. Definir los contratos entre modelo, API e interfaz.
+3. Implementar y verificar un vertical completo de comentario a predicción.
+4. Validar la experiencia, desplegar una demo autorizada y preparar evidencias.
+5. Promover la primera versión aceptada de `dev` a `main` y publicar su release.
 
 ## Equipo
 
-Proyecto desarrollado por el equipo del bootcamp de IA. Las decisiones de producto, modelo y calidad se registrarán en Jira y se vincularán desde esta documentación cuando estén aprobadas.
+Proyecto desarrollado por **Gabriela Granja**, **Fernanda Trk** y
+**Miguel Redondo** durante el bootcamp de Inteligencia Artificial de
+Factoría F5.
+
+Las decisiones se registran en Jira, se especifican en OpenSpec cuando son
+materiales y se demuestran mediante código, pruebas y revisiones en GitHub.
