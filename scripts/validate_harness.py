@@ -26,6 +26,9 @@ BRANCH_PATTERN = re.compile(
 INTEGRATION_BRANCHES = {"dev", "main"}
 JIRA_PATTERN = re.compile(r"\bSP-\d+\b", re.IGNORECASE)
 CANONICAL_REPOSITORY = "Bootcamp-IA-MAD-P7/proyecto9-grupo3"
+CONVENTIONAL_COMMIT_TITLE_PATTERN = re.compile(
+    r"^(feat|fix|docs|test|ci|chore)(\([a-z0-9][a-z0-9-]*\))?!?: [a-z0-9].+$"
+)
 
 
 def read(relative_path: str) -> str:
@@ -83,6 +86,11 @@ def validate_pull_request() -> list[str]:
     head_repository_name = head_repository.get("full_name") or ""
     base = pull_request.get("base", {}).get("ref") or ""
     errors: list[str] = []
+    if not CONVENTIONAL_COMMIT_TITLE_PATTERN.fullmatch(title):
+        errors.append(
+            "PR title must use Conventional Commits: "
+            "<feat|fix|docs|test|ci|chore>(scope)?: lowercase description."
+        )
     if base == "main":
         if head != "dev":
             errors.append("Pull requests into main must promote the dev branch.")
