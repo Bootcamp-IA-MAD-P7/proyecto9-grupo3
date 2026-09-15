@@ -8,7 +8,7 @@ SP-21 necesita cargar el dataset de forma reproducible y segura antes de comenza
 - Validar existencia, columnas y valores esenciales.
 - Producir errores comprensibles para entradas inválidas.
 - Evitar logs con comentarios reales.
-- Mantener el dataset fuera del repositorio.
+- Fernanda solicita versionar el CSV original para facilitar el trabajo compartido; su integración requiere revisión del equipo y aclarar la redistribución. Esta solicitud no constituye una excepción aprobada al harness.
 
 ### Validated facts
 
@@ -29,7 +29,6 @@ SP-21 necesita cargar el dataset de forma reproducible y segura antes de comenza
 - Transformación de texto.
 - División train/test.
 - Entrenamiento del modelo.
-- Subir el CSV al repositorio.
 
 ## Capabilities
 
