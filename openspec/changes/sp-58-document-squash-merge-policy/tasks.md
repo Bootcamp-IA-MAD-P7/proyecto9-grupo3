@@ -9,4 +9,4 @@
 
 - [x] 2.1 Run OpenSpec structural validation, harness validation, and
   `git diff --check`.
-- [ ] 2.2 Obtain independent review through a PR into `dev`.
+- [x] 2.2 Obtain and record independent review feedback through a PR into `dev`.
