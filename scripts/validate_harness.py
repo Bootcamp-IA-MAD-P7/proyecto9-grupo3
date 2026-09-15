@@ -23,6 +23,7 @@ REQUIRED_PATHS = (
 BRANCH_PATTERN = re.compile(
     r"^(feature|fix|docs|test|ci|chore)/SP-\d+-[a-z0-9][a-z0-9-]*$"
 )
+INTEGRATION_BRANCHES = {"dev", "main"}
 JIRA_PATTERN = re.compile(r"\bSP-\d+\b", re.IGNORECASE)
 
 
@@ -121,7 +122,11 @@ def validate() -> list[str]:
                 errors.append(f"{change.name}: missing specs/<capability>/spec.md")
 
     branch = current_branch()
-    if branch and branch != "main" and not BRANCH_PATTERN.fullmatch(branch):
+    if (
+        branch
+        and branch not in INTEGRATION_BRANCHES
+        and not BRANCH_PATTERN.fullmatch(branch)
+    ):
         errors.append(
             f"Branch {branch!r} must match <type>/SP-<number>-<description>."
         )
