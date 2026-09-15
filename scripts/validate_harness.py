@@ -77,8 +77,11 @@ def validate_pull_request() -> list[str]:
     title = pull_request.get("title") or ""
     body = pull_request.get("body") or ""
     head = pull_request.get("head", {}).get("ref") or ""
+    base = pull_request.get("base", {}).get("ref") or ""
     errors: list[str] = []
-    if not BRANCH_PATTERN.fullmatch(head):
+    if base == "main" and head != "dev":
+        errors.append("Pull requests into main must promote the dev branch.")
+    if base != "main" and not BRANCH_PATTERN.fullmatch(head):
         errors.append(
             "PR branch must match <type>/SP-<number>-<short-description>."
         )
