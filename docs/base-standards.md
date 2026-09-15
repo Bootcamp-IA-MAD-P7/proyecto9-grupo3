@@ -42,7 +42,9 @@ When artifacts disagree, stop and reconcile them. Do not silently choose one.
     release to protected `main`.
 
 Allowed branch types are `feature`, `fix`, `docs`, `test`, `ci`, and `chore`.
-Use Conventional Commits in English. Prefer squash merge for a focused Jira item.
+Use Conventional Commits in English. The title of every PR must use that format:
+with squash merge, it represents the final integrated commit. Prefer squash merge
+for a focused Jira item.
 
 ## 4. When OpenSpec is required
 
