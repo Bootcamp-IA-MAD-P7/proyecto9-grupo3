@@ -23,6 +23,23 @@ implementation begins.
 - **THEN** it presents questions and a proposed enrichment separately
 - **AND** does not silently write the proposal back to Jira or implement it
 
+### Requirement: Integration and release branches have distinct roles
+
+Material work SHALL branch from and return to `dev`. Authorized early AWS demo
+deployments SHALL use `dev` as their source. The `main` branch SHALL be reserved
+for the accepted final production-ready release promoted from `dev`.
+
+#### Scenario: A contributor opens a feature pull request
+
+- **WHEN** material work is ready for team review
+- **THEN** its pull request targets `dev`
+- **AND** required checks and independent approval apply before merge
+
+#### Scenario: The team prepares the final release
+
+- **WHEN** the integrated release on `dev` has been accepted
+- **THEN** the team promotes that release to protected `main`
+
 ### Requirement: Independent evidence
 
 A change SHALL not be considered done until its acceptance criteria are mapped to

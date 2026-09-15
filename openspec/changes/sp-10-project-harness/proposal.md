@@ -14,6 +14,8 @@ to prevent AI-assisted work from silently changing agreed product scope.
 - Add a collaborative Jira story enrichment skill.
 - Add an independent adversarial review skill.
 - Add pull-request and automated structural quality gates.
+- Establish `dev` as the integration and early AWS demo source, while reserving
+  `main` for the final production-ready release.
 - Encode human control of external actions and distinguish accepted rules from
   unvalidated product hypotheses.
 

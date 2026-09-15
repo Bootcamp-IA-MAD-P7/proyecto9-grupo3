@@ -27,9 +27,10 @@
 ## 5. Team review and external settings
 
 - [x] 5.1 Obtain review from Gabriela or Miguel on the spec and standards.
-- [ ] 5.2 Configure `main` branch protection in GitHub.
+- [ ] 5.2 Configure required checks and protection for integration branch `dev`.
 - [ ] 5.3 Require approval from another contributor before merge.
 - [ ] 5.4 After team approval, align Jira transitions and automation rules.
+- [ ] 5.5 Protect `main` for final promotion from an accepted `dev` release.
 
 ## 6. Follow-up work
 
@@ -37,3 +38,4 @@
 - [ ] 6.2 Run strict OpenSpec validation in CI.
 - [ ] 6.3 Add Python and frontend checks after the application stack is selected.
 - [ ] 6.4 Select and document AWS architecture after product needs are known.
+- [ ] 6.5 Configure authorized early AWS demo deployments to use `dev`.
