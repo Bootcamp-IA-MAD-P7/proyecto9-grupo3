@@ -22,11 +22,17 @@ class ValidatePullRequestTests(unittest.TestCase):
         base: str = "dev",
         head: str = "ci/SP-57-validate-conventional-commits",
         repository: str = validate_harness.CANONICAL_REPOSITORY,
+        body: str | None = None,
     ) -> list[str]:
+        body = body or (
+            "- **Jira:** SP-57\n"
+            "- **OpenSpec:** "
+            "`openspec/changes/sp-57-validate-conventional-commits/`"
+        )
         payload = {
             "pull_request": {
                 "title": title,
-                "body": "OpenSpec: openspec/changes/sp-57-validate-conventional-commits/",
+                "body": body,
                 "base": {"ref": base},
                 "head": {"ref": head, "repo": {"full_name": repository}},
             }
@@ -82,3 +88,38 @@ class ValidatePullRequestTests(unittest.TestCase):
                 "chore(release): prepare v0.1.0", base="main", head="dev"
             ),
         )
+
+    def test_accepts_a_non_material_openspec_reason(self) -> None:
+        self.assertEqual(
+            [],
+            self.pull_request_errors(
+                "docs: clarify contribution guide",
+                body=(
+                    "- **Jira:** SP-13\n"
+                    "- **OpenSpec:** N/A — documentation-only clarification"
+                ),
+            ),
+        )
+
+    def test_rejects_a_missing_openspec_field(self) -> None:
+        errors = self.pull_request_errors(
+            "docs: clarify contribution guide", body="- **Jira:** SP-13"
+        )
+        self.assertIn("PR body must include an OpenSpec field.", errors)
+
+    def test_rejects_an_unjustified_non_material_openspec(self) -> None:
+        errors = self.pull_request_errors(
+            "docs: clarify contribution guide",
+            body="- **Jira:** SP-13\n- **OpenSpec:** N/A",
+        )
+        self.assertIn(
+            "OpenSpec must link openspec/changes/ or use N/A — <non-material reason>.",
+            errors,
+        )
+
+    def test_rejects_a_missing_jira_field(self) -> None:
+        errors = self.pull_request_errors(
+            "docs: clarify contribution guide",
+            body="- **OpenSpec:** N/A — documentation-only clarification",
+        )
+        self.assertIn("PR body must include a Jira field with an SP-<number> key.", errors)

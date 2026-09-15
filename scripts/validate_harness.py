@@ -29,6 +29,13 @@ CANONICAL_REPOSITORY = "Bootcamp-IA-MAD-P7/proyecto9-grupo3"
 CONVENTIONAL_COMMIT_TITLE_PATTERN = re.compile(
     r"^(feat|fix|docs|test|ci|chore)(\([a-z0-9][a-z0-9-]*\))?!?: [a-z0-9].+$"
 )
+JIRA_FIELD_PATTERN = re.compile(
+    r"(?mi)^-\s+(?:\*\*)?Jira:\s*(?:\*\*)?\s*SP-\d+\s*$"
+)
+OPENSPEC_FIELD_PATTERN = re.compile(
+    r"(?mi)^-\s+(?:\*\*)?OpenSpec:\s*(?:\*\*)?\s*(.+?)\s*$"
+)
+NON_MATERIAL_OPENSPEC_PATTERN = re.compile(r"^N/A\s*[—-]\s*\S.*$", re.IGNORECASE)
 
 
 def read(relative_path: str) -> str:
@@ -105,8 +112,21 @@ def validate_pull_request() -> list[str]:
         )
     if not JIRA_PATTERN.search(f"{title}\n{body}\n{head}"):
         errors.append("PR title, body, or branch must reference an SP Jira key.")
-    if "openspec/changes/" not in body:
-        errors.append("PR body must link its openspec/changes/ directory.")
+    if not JIRA_FIELD_PATTERN.search(body):
+        errors.append("PR body must include a Jira field with an SP-<number> key.")
+    openspec_field = OPENSPEC_FIELD_PATTERN.search(body)
+    if not openspec_field:
+        errors.append("PR body must include an OpenSpec field.")
+    else:
+        openspec_value = openspec_field.group(1).strip("` ")
+        if (
+            "openspec/changes/" not in openspec_value
+            and not NON_MATERIAL_OPENSPEC_PATTERN.fullmatch(openspec_value)
+        ):
+            errors.append(
+                "OpenSpec must link openspec/changes/ or use "
+                "N/A — <non-material reason>."
+            )
     return errors
 
 

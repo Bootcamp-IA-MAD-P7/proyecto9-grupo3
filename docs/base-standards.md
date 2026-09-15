@@ -45,6 +45,9 @@ Allowed branch types are `feature`, `fix`, `docs`, `test`, `ci`, and `chore`.
 Use Conventional Commits in English. The title of every PR must use that format:
 with squash merge, it represents the final integrated commit. Prefer squash merge
 for a focused Jira item.
+Every PR uses the repository template. Its OpenSpec field must link the material
+change or state `N/A — <reason>` for a non-material change; reviewers decide
+whether that justification is valid.
 
 ## 4. When OpenSpec is required
 

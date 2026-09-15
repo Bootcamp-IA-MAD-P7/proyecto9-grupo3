@@ -1,36 +1,38 @@
-## Traceability
+## Context and traceability
 
-- Jira: <!-- SP-10 -->
-- OpenSpec: <!-- openspec/changes/sp-10-project-harness/ -->
+- **Jira:** SP-XX
+- **OpenSpec:** `openspec/changes/SP-XX-change-name/`
+  or `N/A — <brief reason why the change is non-material>`
+- **Owner:**
+- **Suggested reviewer:**
+- **AI assistance:** None / describe scoped assistance.
 
-## User or team outcome
+## What changes and why
 
-<!-- Describe observable value, not only files changed. -->
+<!-- Explain the observable team or product outcome. -->
 
-## Acceptance evidence
+## Acceptance criteria
 
-| Criterion or scenario | Evidence |
-|---|---|
-| <!-- requirement --> | <!-- test, command, capture, metric, or review --> |
+- [ ] <!-- Criterion from Jira or OpenSpec -->
+- [ ] <!-- Criterion from Jira or OpenSpec -->
 
-## Verification
+## Validation performed
 
-- [ ] Targeted tests pass.
-- [ ] Required repository checks pass.
-- [ ] Error, boundary, and recovery behavior was considered.
-- [ ] UX states and accessibility were reviewed when relevant.
-- [ ] Data and model claims have reproducible evidence when relevant.
-- [ ] A teammate other than the author performed or will perform review.
+- [ ] <!-- Command, test, review, capture, or metric -->
+- [ ] `git diff --check`
 
-## Risk and rollback
+## Data, security and operations
 
-<!-- State failure modes, known gaps, and how to reverse the change. -->
+<!-- State "Not applicable" or describe relevant data, secrets, privacy,
+external actions, deployment, and operational evidence. -->
 
-## External actions
+## Risks, decisions and rollback
 
-<!-- List Jira/GitHub/AWS/YouTube writes or state "None". Include authorization
-and test-environment evidence for any external action. -->
+<!-- State known risks, relevant decision, and how to reverse the change. -->
 
-## Learning
+## Review checklist
 
-<!-- What assumption changed, and what evidence changed it? -->
+- [ ] A person other than the author reviewed the change.
+- [ ] Jira, OpenSpec, documentation, and evidence match reality.
+- [ ] The Jira task will move to Done only after merge and verifiable evidence.
+- [ ] AI-assisted output was checked against the spec, diff, and validations.
