@@ -1,3 +1,0 @@
-# proyecto9-grupo3
-
-Consulta la vision de producto del MVP de moderacion: [docs/product-vision.md](docs/product-vision.md).
