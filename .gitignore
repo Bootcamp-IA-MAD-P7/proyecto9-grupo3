@@ -15,3 +15,5 @@ dist/
 build/
 *.joblib
 data/raw/
+
+.ipynb_checkpoints/
