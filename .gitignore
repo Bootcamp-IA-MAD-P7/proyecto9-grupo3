@@ -29,3 +29,4 @@ dist/
 build/
 *.joblib
 data/raw/
+*.egg-info/

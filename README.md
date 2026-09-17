@@ -24,12 +24,28 @@ comentarios que requieren atención, sin delegar la decisión final en el modelo
 | Flujo Jira, Git y pull requests | ✅ | [Guía de contribución](CONTRIBUTING.md) |
 | SDD, OpenSpec y project harness | ✅ | [Project harness](docs/HARNESS.md) |
 | Controles de calidad y seguridad | ✅ | Harness automático y protección de ramas |
+| Base del backend | ✅ | API local con `/health`, documentación y pruebas; [guía del paso 1](docs/backend/01-primer-endpoint.md) |
 | Línea base del modelo | ⏳ | Pendiente de entrenamiento y evaluación reproducible |
 | Vertical funcional y demo | ⏳ | Pendiente de implementación |
 | Arquitectura y despliegue AWS | ⏳ | Se decidirán con las necesidades del vertical |
 
-> **Estado verificable:** la base profesional de trabajo está operativa. La
-> aplicación, el modelo evaluado y el despliegue todavía no están implementados.
+> **Estado verificable:** la base profesional y la primera API local están
+> operativas. El flujo de moderación, el modelo evaluado y el despliegue todavía
+> no están implementados.
+
+## Ejecutar la primera API
+
+Desde la raíz del repositorio, con Python 3.12 o superior:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -c backend/constraints.txt -e '.[dev]'
+.\.venv\Scripts\python.exe -m uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
+```
+
+Abre [la documentación local](http://127.0.0.1:8000/docs) y prueba `GET /health`.
+La [guía del primer endpoint](docs/backend/01-primer-endpoint.md) explica cada
+archivo, cómo ejecutar las pruebas y qué construiremos en las siguientes entregas.
 
 ## El problema
 
@@ -134,17 +150,19 @@ git diff --check
 .
 ├── .agents/                  # Skills reutilizables para agentes
 ├── .github/                  # CODEOWNERS, PR template y workflow
+├── backend/                  # API FastAPI, pruebas y dependencias verificadas
 ├── docs/                     # Visión, discovery, harness y estándares
 ├── openspec/changes/         # Propuestas, diseño, specs y tareas verificables
 ├── scripts/                  # Validadores ligeros del repositorio
 ├── tests/                    # Pruebas automáticas del harness
 ├── AGENTS.md                 # Punto de entrada para agentes
 ├── CONTRIBUTING.md           # Guía breve de contribución
+├── pyproject.toml            # Paquete Python y configuración de pruebas
 └── README.md                 # Visión general y estado verificable
 ```
 
-La estructura de aplicación, entrenamiento e infraestructura se añadirá cuando
-se apruebe e implemente el primer vertical funcional.
+La base de la API está implementada. Las piezas de moderación, entrenamiento e
+infraestructura se añadirán con las siguientes entregas funcionales.
 
 ## Documentación
 
