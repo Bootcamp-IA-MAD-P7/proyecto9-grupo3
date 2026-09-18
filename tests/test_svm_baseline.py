@@ -53,18 +53,23 @@ def test_prepare_excludes_name_marker_and_strips_text(tmp_path):
     assert dataset["Text"].iloc[0] == "train token"
 
 
-def test_unknown_video_id_is_rejected():
+def test_unknown_video_id_is_rejected(tmp_path):
     raw, split = synthetic_dataset()
     raw.loc[0, "CommentId"] = "unknown"
+    split.loc[split["CommentId"] == "train-0", "CommentId"] = "different"
+    split_path = tmp_path / "common_split.csv"
+    split.to_csv(split_path, index=False)
     with pytest.raises(ValueError, match="common split"):
-        prepare_dataset(raw, split.assign(CommentId=lambda frame: frame["CommentId"].replace("train-0", "different")))
+        prepare_dataset(raw, split_path)
 
 
-def test_fit_on_train_excludes_validation_and_test_text_from_tfidf():
+def test_fit_on_train_excludes_validation_and_test_text_from_tfidf(tmp_path):
     raw, split = synthetic_dataset()
     raw.loc[raw["CommentId"] == "validation-row", "Text"] = "validation leakage token"
     raw.loc[raw["CommentId"] == "test-row", "Text"] = "test leakage token"
-    dataset = prepare_dataset(raw, split)
+    split_path = tmp_path / "common_split.csv"
+    split.to_csv(split_path, index=False)
+    dataset = prepare_dataset(raw, split_path)
 
     model = fit_on_train(dataset, calibrate=False)
 
@@ -75,9 +80,11 @@ def test_fit_on_train_excludes_validation_and_test_text_from_tfidf():
     assert "leakage" not in vocabulary
 
 
-def test_fit_on_train_calibrates_only_the_train_rows():
+def test_fit_on_train_calibrates_only_the_train_rows(tmp_path):
     raw, split = synthetic_dataset()
-    dataset = prepare_dataset(raw, split)
+    split_path = tmp_path / "common_split.csv"
+    split.to_csv(split_path, index=False)
+    dataset = prepare_dataset(raw, split_path)
 
     model = fit_on_train(dataset, calibrate=True)
 
