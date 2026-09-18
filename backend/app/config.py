@@ -17,3 +17,6 @@ class Settings(BaseSettings):
     app_name: str = Field(default="Moderation API", min_length=1)
     docs_enabled: bool = True
     database_path: Path = Path("data/local/moderation.db")
+    session_ttl_seconds: int = Field(default=1800, ge=60, le=86400)
+    login_max_attempts: int = Field(default=5, ge=1, le=100)
+    login_window_seconds: int = Field(default=60, ge=1, le=3600)

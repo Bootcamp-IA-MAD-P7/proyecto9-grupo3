@@ -26,32 +26,54 @@ class Database:
         with self.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1):
+            if version not in (0, 1, 2):
                 raise RuntimeError("Unsupported database schema version")
-            if version == 1:
+            if version == 2:
                 return
+            if version == 0:
+                self._create_persistence_schema(connection)
             connection.execute("""
-                CREATE TABLE users (
-                    id TEXT PRIMARY KEY NOT NULL,
-                    username TEXT NOT NULL UNIQUE,
-                    display_name TEXT NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    role TEXT NOT NULL CHECK (role IN ('MODERATOR', 'SUPERVISOR')),
-                    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
-                    created_at INTEGER NOT NULL
+                CREATE TABLE sessions (
+                    token_hash TEXT PRIMARY KEY NOT NULL CHECK (length(token_hash) = 64),
+                    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at INTEGER NOT NULL,
+                    expires_at INTEGER NOT NULL CHECK (expires_at > created_at)
                 )
             """)
+            connection.execute("CREATE INDEX sessions_expiry ON sessions(expires_at)")
+            connection.execute("CREATE INDEX sessions_user ON sessions(user_id)")
             connection.execute("""
-                CREATE TABLE comments (
-                    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
-                    comment_id TEXT NOT NULL UNIQUE,
-                    video_id TEXT NOT NULL,
-                    text TEXT NOT NULL,
-                    status TEXT NOT NULL DEFAULT 'PENDING'
-                        CHECK (status IN ('PENDING', 'IN_REVIEW', 'CLASSIFIED',
-                                         'ESCALATED', 'RESOLVED', 'REOPEN_REQUESTED', 'REOPENED')),
-                    assignee_id TEXT REFERENCES users(id) ON DELETE RESTRICT
+                CREATE TABLE login_attempts (
+                    username TEXT PRIMARY KEY NOT NULL,
+                    attempts INTEGER NOT NULL CHECK (attempts > 0),
+                    window_started_at INTEGER NOT NULL
                 )
             """)
-            connection.execute("CREATE INDEX comments_status_order ON comments(status, sequence)")
-            connection.execute("PRAGMA user_version=1")
+            connection.execute("CREATE INDEX attempts_window ON login_attempts(window_started_at)")
+            connection.execute("PRAGMA user_version=2")
+
+    def _create_persistence_schema(self, connection: sqlite3.Connection) -> None:
+        connection.execute("""
+            CREATE TABLE users (
+                id TEXT PRIMARY KEY NOT NULL,
+                username TEXT NOT NULL UNIQUE,
+                display_name TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL CHECK (role IN ('MODERATOR', 'SUPERVISOR')),
+                is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+                created_at INTEGER NOT NULL
+            )
+        """)
+        connection.execute("""
+            CREATE TABLE comments (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                comment_id TEXT NOT NULL UNIQUE,
+                video_id TEXT NOT NULL,
+                text TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'PENDING'
+                    CHECK (status IN ('PENDING', 'IN_REVIEW', 'CLASSIFIED',
+                                     'ESCALATED', 'RESOLVED', 'REOPEN_REQUESTED', 'REOPENED')),
+                assignee_id TEXT REFERENCES users(id) ON DELETE RESTRICT
+            )
+        """)
+        connection.execute("CREATE INDEX comments_status_order ON comments(status, sequence)")

@@ -26,12 +26,13 @@ comentarios que requieren atención, sin delegar la decisión final en el modelo
 | Controles de calidad y seguridad | ✅ | Harness automático y protección de ramas |
 | Base del backend | ✅ | API local con `/health`, documentación y pruebas; [guía del paso 1](docs/backend/01-primer-endpoint.md) |
 | Persistencia del backend | ✅ | SQLite guarda usuarios y comentarios; [guía del paso 2](docs/backend/02-base-de-datos.md) |
+| Autenticación y permisos | ✅ | Login, sesiones SQLite, hashes Argon2id y guard de roles; [guía del paso 3](docs/backend/03-autenticacion-y-permisos.md) |
 | Línea base del modelo | ⏳ | Pendiente de entrenamiento y evaluación reproducible |
 | Vertical funcional y demo | ⏳ | Pendiente de implementación |
 | Arquitectura y despliegue AWS | ⏳ | Se decidirán con las necesidades del vertical |
 
-> **Estado verificable:** la API local y la persistencia SQLite están operativas.
-> El login, la cola de revisión, el modelo evaluado y el despliegue todavía no
+> **Estado verificable:** la API local, la persistencia SQLite y el login están
+> operativos. La cola de revisión, el modelo evaluado y el despliegue todavía no
 > están implementados.
 
 ## Ejecutar la primera API
@@ -51,6 +52,16 @@ archivo, cómo ejecutar las pruebas y qué construiremos en las siguientes entre
 La [guía de persistencia](docs/backend/02-base-de-datos.md) explica las tablas,
 las transacciones y cómo inspeccionarlas con datos sintéticos. La base local se
 guarda en `data/local/moderation.db` y queda fuera de Git.
+
+Para probar autenticación, carga los usuarios `moderator` y `supervisor` con
+contraseñas elegidas por ti:
+
+```powershell
+.\.venv\Scripts\python.exe -m app.seed_demo_users
+```
+
+La [guía de autenticación y permisos](docs/backend/03-autenticacion-y-permisos.md)
+recorre login, autorización en Swagger y logout.
 
 ## El problema
 
@@ -166,7 +177,7 @@ git diff --check
 └── README.md                 # Visión general y estado verificable
 ```
 
-La API y la base de datos están implementadas. La autenticación, la cola,
+La API, la base de datos y la autenticación están implementadas. La cola,
 el modelo evaluado y la infraestructura se añadirán en entregas posteriores.
 
 ## Documentación
