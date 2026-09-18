@@ -6,6 +6,7 @@ from src.moderation.modeling.svm_baseline import (
     TRAIN_VIDEO_IDS,
     VALIDATION_VIDEO_IDS,
     assign_splits,
+    fit_on_train,
     prepare_dataset,
 )
 
@@ -40,3 +41,61 @@ def test_unknown_video_id_is_rejected():
     dataset.loc[0, "VideoId"] = "unknown-video"
     with pytest.raises(ValueError, match="outside the approved split"):
         prepare_dataset(dataset)
+
+
+def test_fit_on_train_excludes_validation_and_test_text_from_tfidf():
+    rows = []
+    for index, video_id in enumerate(TRAIN_VIDEO_IDS):
+        rows.append(
+            {
+                "CommentId": f"train-{index}",
+                "VideoId": video_id,
+                "Text": "train only token",
+                "IsToxic": index % 2,
+            }
+        )
+    rows.extend(
+        [
+            {
+                "CommentId": "validation-row",
+                "VideoId": next(iter(VALIDATION_VIDEO_IDS)),
+                "Text": "validation leakage token",
+                "IsToxic": 0,
+            },
+            {
+                "CommentId": "test-row",
+                "VideoId": next(iter(TEST_VIDEO_IDS)),
+                "Text": "test leakage token",
+                "IsToxic": 1,
+            },
+        ]
+    )
+    dataset = prepare_dataset(pd.DataFrame(rows))
+
+    model = fit_on_train(dataset, calibrate=False)
+
+    vocabulary = model.named_steps["tfidf"].vocabulary_
+    assert "train" in vocabulary
+    assert "validation" not in vocabulary
+    assert "test" not in vocabulary
+    assert "leakage" not in vocabulary
+
+
+def test_fit_on_train_calibrates_only_the_train_rows():
+    rows = []
+    for index in range(10):
+        rows.append(
+            {
+                "CommentId": f"train-{index}",
+                "VideoId": next(iter(TRAIN_VIDEO_IDS)),
+                "Text": f"train token {index}",
+                "IsToxic": index % 2,
+            }
+        )
+    dataset = prepare_dataset(pd.DataFrame(rows))
+
+    model = fit_on_train(dataset, calibrate=True)
+
+    calibrated = model.named_steps["classifier"]
+    assert len(calibrated.calibrated_classifiers_) == 5
+    assert all(estimator.estimator.classes_.tolist() == [False, True] for estimator in calibrated.calibrated_classifiers_)

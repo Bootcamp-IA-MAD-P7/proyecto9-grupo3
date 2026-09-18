@@ -60,7 +60,7 @@ def prepare_dataset(dataset: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_pipeline(*, calibrate: bool = True) -> Pipeline:
-    """Build TF-IDF + linear SVM; calibration is fitted on train only."""
+    """Build the TF-IDF + linear SVM pipeline."""
     classifier = LinearSVC(class_weight=None, random_state=42)
     if calibrate:
         classifier = CalibratedClassifierCV(classifier, method="sigmoid", cv=5)
@@ -70,6 +70,16 @@ def build_pipeline(*, calibrate: bool = True) -> Pipeline:
             ("classifier", classifier),
         ]
     )
+
+
+def fit_on_train(dataset: pd.DataFrame, *, calibrate: bool = True) -> Pipeline:
+    """Fit TF-IDF and the classifier using only the approved train split."""
+    train = dataset.loc[dataset["split"].eq("train")]
+    if train.empty:
+        raise ValueError("The train split contains no rows")
+    model = build_pipeline(calibrate=calibrate)
+    model.fit(train["Text"], train["IsToxic"].astype(bool))
+    return model
 
 
 def choose_threshold(y_true: Iterable[bool], probabilities: Iterable[float]) -> float:
