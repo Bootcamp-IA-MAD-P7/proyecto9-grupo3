@@ -25,13 +25,14 @@ comentarios que requieren atención, sin delegar la decisión final en el modelo
 | SDD, OpenSpec y project harness | ✅ | [Project harness](docs/HARNESS.md) |
 | Controles de calidad y seguridad | ✅ | Harness automático y protección de ramas |
 | Base del backend | ✅ | API local con `/health`, documentación y pruebas; [guía del paso 1](docs/backend/01-primer-endpoint.md) |
+| Persistencia del backend | ✅ | SQLite guarda usuarios y comentarios; [guía del paso 2](docs/backend/02-base-de-datos.md) |
 | Línea base del modelo | ⏳ | Pendiente de entrenamiento y evaluación reproducible |
 | Vertical funcional y demo | ⏳ | Pendiente de implementación |
 | Arquitectura y despliegue AWS | ⏳ | Se decidirán con las necesidades del vertical |
 
-> **Estado verificable:** la base profesional y la primera API local están
-> operativas. El flujo de moderación, el modelo evaluado y el despliegue todavía
-> no están implementados.
+> **Estado verificable:** la API local y la persistencia SQLite están operativas.
+> El login, la cola de revisión, el modelo evaluado y el despliegue todavía no
+> están implementados.
 
 ## Ejecutar la primera API
 
@@ -46,6 +47,10 @@ python -m venv .venv
 Abre [la documentación local](http://127.0.0.1:8000/docs) y prueba `GET /health`.
 La [guía del primer endpoint](docs/backend/01-primer-endpoint.md) explica cada
 archivo, cómo ejecutar las pruebas y qué construiremos en las siguientes entregas.
+
+La [guía de persistencia](docs/backend/02-base-de-datos.md) explica las tablas,
+las transacciones y cómo inspeccionarlas con datos sintéticos. La base local se
+guarda en `data/local/moderation.db` y queda fuera de Git.
 
 ## El problema
 
@@ -161,8 +166,8 @@ git diff --check
 └── README.md                 # Visión general y estado verificable
 ```
 
-La base de la API está implementada. Las piezas de moderación, entrenamiento e
-infraestructura se añadirán con las siguientes entregas funcionales.
+La API y la base de datos están implementadas. La autenticación, la cola,
+el modelo evaluado y la infraestructura se añadirán en entregas posteriores.
 
 ## Documentación
 

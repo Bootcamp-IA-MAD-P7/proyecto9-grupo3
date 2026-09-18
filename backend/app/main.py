@@ -1,13 +1,23 @@
 """Assemble the application; run with uvicorn app.main:create_app --factory."""
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.config import Settings
+from app.database import Database
 from app.health import router as health_router
 
 
 def create_app() -> FastAPI:
     settings = Settings()
+    database = Database(settings.database_path)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        database.initialize()
+        yield
+
     app = FastAPI(
         title=settings.app_name,
         version="0.1.0",
@@ -15,6 +25,8 @@ def create_app() -> FastAPI:
         docs_url="/docs" if settings.docs_enabled else None,
         redoc_url="/redoc" if settings.docs_enabled else None,
         openapi_url="/openapi.json" if settings.docs_enabled else None,
+        lifespan=lifespan,
     )
+    app.state.database = database
     app.include_router(health_router)
     return app

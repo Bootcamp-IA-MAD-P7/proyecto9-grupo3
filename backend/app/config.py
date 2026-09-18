@@ -1,5 +1,7 @@
 """Load and validate the settings used to assemble the API."""
 
+from pathlib import Path
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,3 +16,4 @@ class Settings(BaseSettings):
 
     app_name: str = Field(default="Moderation API", min_length=1)
     docs_enabled: bool = True
+    database_path: Path = Path("data/local/moderation.db")
