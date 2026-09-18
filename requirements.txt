@@ -1,2 +1,8 @@
 pandas==3.0.5
 scikit-learn==1.7.2
+numpy>=2.0,<3
+torch>=2.7,<3
+transformers>=5,<6
+accelerate>=1,<2
+matplotlib>=3.10,<4
+seaborn>=0.13,<1

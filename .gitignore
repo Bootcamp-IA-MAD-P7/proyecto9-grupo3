@@ -18,6 +18,7 @@ data/raw/
 # Local tooling and recovery artifacts
 .ipynb_checkpoints/
 dev-protection-before-harness-removal.json
+.test-tmp/
 data/private/
 datasets/
 .idea/
