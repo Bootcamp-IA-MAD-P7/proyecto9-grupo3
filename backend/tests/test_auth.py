@@ -96,18 +96,16 @@ def test_auth_migration_keeps_existing_comments_and_users(tmp_path):
     from app.database import Database
 
     database = Database(tmp_path / "migration.db")
-    database.initialize()
     with database.connect() as connection:
+        database._create_persistence_schema(connection)
+        connection.execute("PRAGMA user_version=1")
         connection.execute("INSERT INTO users(id,username,display_name,password_hash,role,created_at) VALUES (?,?,?,?,?,?)",
                            ("u1", "legacy", "Legacy User", "synthetic-hash", "MODERATOR", 1))
         connection.execute("INSERT INTO comments(comment_id,video_id,text) VALUES (?,?,?)",
                            ("c1", "v1", "Synthetic existing comment"))
-        connection.execute("DROP TABLE login_attempts")
-        connection.execute("DROP TABLE sessions")
-        connection.execute("PRAGMA user_version=1")
     database.initialize()
     with database.connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
         assert connection.execute("SELECT count(*) FROM users").fetchone()[0] == 1
         assert connection.execute("SELECT count(*) FROM comments").fetchone()[0] == 1
         assert connection.execute("SELECT count(*) FROM sessions").fetchone()[0] == 0

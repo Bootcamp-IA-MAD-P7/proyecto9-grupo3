@@ -27,13 +27,14 @@ comentarios que requieren atención, sin delegar la decisión final en el modelo
 | Base del backend | ✅ | API local con `/health`, documentación y pruebas; [guía del paso 1](docs/backend/01-primer-endpoint.md) |
 | Persistencia del backend | ✅ | SQLite guarda usuarios y comentarios; [guía del paso 2](docs/backend/02-base-de-datos.md) |
 | Autenticación y permisos | ✅ | Login, sesiones SQLite, hashes Argon2id y guard de roles; [guía del paso 3](docs/backend/03-autenticacion-y-permisos.md) |
+| Carga y cola priorizada | ✅ | Lotes validados, puntuación simulada y cola paginada sin texto; [guía del paso 4](docs/backend/04-carga-y-cola-priorizada.md) |
 | Línea base del modelo | ⏳ | Pendiente de entrenamiento y evaluación reproducible |
 | Vertical funcional y demo | ⏳ | Pendiente de implementación |
 | Arquitectura y despliegue AWS | ⏳ | Se decidirán con las necesidades del vertical |
 
-> **Estado verificable:** la API local, la persistencia SQLite y el login están
-> operativos. La cola de revisión, el modelo evaluado y el despliegue todavía no
-> están implementados.
+> **Estado verificable:** la API local, la persistencia SQLite, el login y la
+> cola con puntuaciones simuladas están operativos. La revisión humana, el
+> modelo evaluado y el despliegue todavía no están implementados.
 
 ## Ejecutar la primera API
 
@@ -62,6 +63,9 @@ contraseñas elegidas por ti:
 
 La [guía de autenticación y permisos](docs/backend/03-autenticacion-y-permisos.md)
 recorre login, autorización en Swagger y logout.
+
+La [guía de carga y cola](docs/backend/04-carga-y-cola-priorizada.md) muestra
+cómo importar comentarios sintéticos y recorrer páginas sin exponer su texto.
 
 ## El problema
 
@@ -177,8 +181,8 @@ git diff --check
 └── README.md                 # Visión general y estado verificable
 ```
 
-La API, la base de datos y la autenticación están implementadas. La cola,
-el modelo evaluado y la infraestructura se añadirán en entregas posteriores.
+La API, la base de datos, la autenticación y la cola simulada están implementadas.
+La revisión humana, el modelo evaluado y la infraestructura se añadirán después.
 
 ## Documentación
 

@@ -26,31 +26,53 @@ class Database:
         with self.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1, 2):
+            if version not in (0, 1, 2, 3):
                 raise RuntimeError("Unsupported database schema version")
-            if version == 2:
+            if version == 3:
                 return
             if version == 0:
                 self._create_persistence_schema(connection)
+            if version < 2:
+                self._create_auth_schema(connection)
+            self._add_scoring_schema(connection)
+            connection.execute("PRAGMA user_version=3")
+
+    def _create_auth_schema(self, connection: sqlite3.Connection) -> None:
+        connection.execute("""
+            CREATE TABLE sessions (
+                token_hash TEXT PRIMARY KEY NOT NULL CHECK (length(token_hash) = 64),
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                created_at INTEGER NOT NULL,
+                expires_at INTEGER NOT NULL CHECK (expires_at > created_at)
+            )
+        """)
+        connection.execute("CREATE INDEX sessions_expiry ON sessions(expires_at)")
+        connection.execute("CREATE INDEX sessions_user ON sessions(user_id)")
+        connection.execute("""
+            CREATE TABLE login_attempts (
+                username TEXT PRIMARY KEY NOT NULL,
+                attempts INTEGER NOT NULL CHECK (attempts > 0),
+                window_started_at INTEGER NOT NULL
+            )
+        """)
+        connection.execute("CREATE INDEX attempts_window ON login_attempts(window_started_at)")
+
+    def _add_scoring_schema(self, connection: sqlite3.Connection) -> None:
+        from app.comments.scoring import SimulatedScorer
+
+        connection.execute("ALTER TABLE comments ADD COLUMN risk_score REAL CHECK (risk_score BETWEEN 0 AND 1)")
+        connection.execute("ALTER TABLE comments ADD COLUMN uncertainty REAL CHECK (uncertainty BETWEEN 0 AND 1)")
+        connection.execute("ALTER TABLE comments ADD COLUMN model_version TEXT")
+        connection.execute("ALTER TABLE comments ADD COLUMN score_source TEXT CHECK (score_source IN ('SIMULATED', 'MODEL'))")
+        scorer = SimulatedScorer()
+        for row in connection.execute("SELECT sequence, text FROM comments"):
+            score = scorer.score_comment(row["text"])
             connection.execute("""
-                CREATE TABLE sessions (
-                    token_hash TEXT PRIMARY KEY NOT NULL CHECK (length(token_hash) = 64),
-                    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    created_at INTEGER NOT NULL,
-                    expires_at INTEGER NOT NULL CHECK (expires_at > created_at)
-                )
-            """)
-            connection.execute("CREATE INDEX sessions_expiry ON sessions(expires_at)")
-            connection.execute("CREATE INDEX sessions_user ON sessions(user_id)")
-            connection.execute("""
-                CREATE TABLE login_attempts (
-                    username TEXT PRIMARY KEY NOT NULL,
-                    attempts INTEGER NOT NULL CHECK (attempts > 0),
-                    window_started_at INTEGER NOT NULL
-                )
-            """)
-            connection.execute("CREATE INDEX attempts_window ON login_attempts(window_started_at)")
-            connection.execute("PRAGMA user_version=2")
+                UPDATE comments SET risk_score=?, uncertainty=?, model_version=?, score_source=?
+                WHERE sequence=?
+            """, (score.risk_score, score.uncertainty, score.model_version,
+                  score.score_source, row["sequence"]))
+        connection.execute("CREATE INDEX comments_queue ON comments(status, risk_score DESC, sequence ASC)")
 
     def _create_persistence_schema(self, connection: sqlite3.Connection) -> None:
         connection.execute("""

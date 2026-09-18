@@ -11,7 +11,7 @@ def test_first_initialization_creates_users_and_comments_and_is_idempotent(tmp_p
     database = Database(tmp_path / "nested" / "moderation.db")
     database.initialize()
     with database.connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
         assert {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")} >= {
             "users", "comments"
         }
