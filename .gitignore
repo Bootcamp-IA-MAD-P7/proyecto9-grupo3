@@ -14,6 +14,10 @@ service-account*.json
 secrets.json
 data/local/
 data/raw/
+
+# Local tooling and recovery artifacts
+.ipynb_checkpoints/
+dev-protection-before-harness-removal.json
 data/private/
 datasets/
 .idea/
