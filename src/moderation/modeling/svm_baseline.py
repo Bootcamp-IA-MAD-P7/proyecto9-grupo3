@@ -21,30 +21,28 @@ from sklearn.pipeline import Pipeline
 from sklearn.svm import LinearSVC
 
 
-TRAIN_VIDEO_IDS = frozenset(
-    {"8HB18hZrhXc", "9pr1oE34bIM", "cT14IbTDW2c", "dDbRyFIkNII", "dG7mZQvaQDk"}
-)
-VALIDATION_VIDEO_IDS = frozenset({"04kJtp6pVXI", "4rCweDxDqdw", "XRuCW80L9mA"})
-TEST_VIDEO_IDS = frozenset({"5vF4si3hoRA", "Dt9-byUhPdg", "TZxEyoplYbI", "bUgKZMSxr3E"})
-SPLIT_VIDEO_IDS = {
-    "train": TRAIN_VIDEO_IDS,
-    "validation": VALIDATION_VIDEO_IDS,
-    "test": TEST_VIDEO_IDS,
-}
 RESULT_COLUMNS = ["CommentId", "y_true", "score", "probability", "prediction", "split"]
+SPLITS = frozenset({"train", "validation", "test"})
 
 
-def assign_splits(dataset: pd.DataFrame) -> pd.Series:
-    """Assign the approved group split without moving or deduplicating rows."""
-    groups = {video_id: split for split, ids in SPLIT_VIDEO_IDS.items() for video_id in ids}
-    unknown = set(dataset["VideoId"].dropna()) - set(groups) - {"#NAME?"}
-    if unknown:
-        raise ValueError("Dataset contains VideoId values outside the approved split")
-    return dataset["VideoId"].map(groups).fillna(pd.NA).astype("string")
+def load_common_split(path: str | Path) -> pd.DataFrame:
+    """Load and validate the shared row-level partition."""
+    split = pd.read_csv(path, dtype={"CommentId": "string", "VideoId": "string", "split": "string"})
+    required = {"CommentId", "VideoId", "split"}
+    missing = required - set(split.columns)
+    if missing:
+        raise ValueError(f"Split is missing required columns: {sorted(missing)}")
+    if split[list(required)].isna().any().any():
+        raise ValueError("Split contains missing identifiers or partitions")
+    if not split["split"].isin(SPLITS).all():
+        raise ValueError("Split contains an unsupported partition")
+    if split["CommentId"].duplicated().any():
+        raise ValueError("Split contains duplicate CommentId values")
+    return split[["CommentId", "VideoId", "split"]]
 
 
-def prepare_dataset(dataset: pd.DataFrame) -> pd.DataFrame:
-    """Apply only approved filtering and text normalization."""
+def prepare_dataset(dataset: pd.DataFrame, split_path: str | Path) -> pd.DataFrame:
+    """Filter excluded rows, normalize text, and apply the shared split."""
     required = {"CommentId", "VideoId", "Text", "IsToxic"}
     missing = required - set(dataset.columns)
     if missing:
@@ -53,10 +51,13 @@ def prepare_dataset(dataset: pd.DataFrame) -> pd.DataFrame:
     prepared["Text"] = prepared["Text"].astype("string").str.strip()
     if prepared["Text"].isna().any() or prepared["Text"].eq("").any():
         raise ValueError("Text contains missing or blank rows")
-    prepared["split"] = assign_splits(prepared)
+    split = load_common_split(split_path)
+    prepared = prepared.merge(split, on="CommentId", how="left", validate="many_to_one", suffixes=("", "_split"))
     if prepared["split"].isna().any():
-        raise ValueError("Some rows do not belong to an approved split")
-    return prepared
+        raise ValueError("Some rows do not belong to the common split")
+    if not prepared["VideoId"].eq(prepared["VideoId_split"]).all():
+        raise ValueError("Common split VideoId does not match the dataset")
+    return prepared.drop(columns="VideoId_split")
 
 
 def build_pipeline(*, calibrate: bool = True) -> Pipeline:
@@ -82,6 +83,19 @@ def fit_on_train(dataset: pd.DataFrame, *, calibrate: bool = True) -> Pipeline:
     return model
 
 
+def run_baseline(dataset_path: str | Path, split_path: str | Path, output_path: str | Path) -> dict[str, object]:
+    """Run train-only fitting, validation thresholding, test evaluation, and export."""
+    from src.moderation.data.extract import extract_dataset
+
+    dataset = prepare_dataset(extract_dataset(dataset_path), split_path)
+    model = fit_on_train(dataset)
+    validation = evaluate_split(model, dataset, "validation", threshold=0.5)
+    threshold = choose_threshold(validation["y_true"], validation["probability"])
+    results = evaluate_split(model, dataset, "test", threshold=threshold)
+    export_results(results, output_path)
+    return {"threshold": threshold, "validation": validation, "test": results}
+
+
 def choose_threshold(y_true: Iterable[bool], probabilities: Iterable[float]) -> float:
     """Choose the validation threshold maximizing F1, with deterministic ties."""
     y_true = np.asarray(list(y_true), dtype=bool)
@@ -92,19 +106,26 @@ def choose_threshold(y_true: Iterable[bool], probabilities: Iterable[float]) -> 
 
 
 def evaluate_split(model: Pipeline, dataset: pd.DataFrame, split: str, threshold: float) -> pd.DataFrame:
-    """Predict one split and return the shared, row-level result format."""
+    """Predict one split using probability as the primary score.
+
+    ``score`` is an optional raw continuous classifier score when the fitted
+    classifier exposes ``decision_function``; calibrated SVMs may expose only
+    probabilities, in which case it is missing.
+    """
     subset = dataset.loc[dataset["split"].eq(split)]
     texts = subset["Text"]
     classifier = model.named_steps["classifier"]
-    score = model.decision_function(texts)
-    probability = model.predict_proba(texts)[:, 1] if hasattr(classifier, "predict_proba") else np.nan
+    if not hasattr(classifier, "predict_proba"):
+        raise ValueError("The fitted classifier must provide predict_proba")
+    probability = model.predict_proba(texts)[:, 1]
+    score = classifier.decision_function(model.named_steps["tfidf"].transform(texts)) if hasattr(classifier, "decision_function") else np.full(len(subset), np.nan)
     return pd.DataFrame(
         {
             "CommentId": subset["CommentId"].to_numpy(),
             "y_true": subset["IsToxic"].astype(bool).to_numpy(),
             "score": np.asarray(score, dtype=float),
             "probability": probability,
-            "prediction": np.asarray(probability >= threshold if not np.isnan(probability).all() else score >= 0),
+            "prediction": np.asarray(probability >= threshold),
             "split": split,
         }
     )

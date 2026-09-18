@@ -2,75 +2,69 @@ import pandas as pd
 import pytest
 
 from src.moderation.modeling.svm_baseline import (
-    TEST_VIDEO_IDS,
-    TRAIN_VIDEO_IDS,
-    VALIDATION_VIDEO_IDS,
-    assign_splits,
+    evaluate_split,
     fit_on_train,
+    load_common_split,
     prepare_dataset,
 )
 
 
-def synthetic_dataset() -> pd.DataFrame:
+def synthetic_dataset() -> tuple[pd.DataFrame, pd.DataFrame]:
     rows = []
-    for index, video_id in enumerate(
-        [next(iter(TRAIN_VIDEO_IDS)), next(iter(VALIDATION_VIDEO_IDS)), next(iter(TEST_VIDEO_IDS))]
-    ):
-        rows.append({"CommentId": f"synthetic-{index}", "VideoId": video_id, "Text": " synthetic text ", "IsToxic": index % 2})
-    rows.append({"CommentId": "synthetic-duplicate", "VideoId": rows[0]["VideoId"], "Text": " synthetic text ", "IsToxic": 1})
-    rows.append({"CommentId": "excluded", "VideoId": "#NAME?", "Text": "excluded text", "IsToxic": 0})
-    return pd.DataFrame(rows)
+    split_rows = []
+    for index in range(10):
+        comment_id = f"train-{index}"
+        rows.append({"CommentId": comment_id, "VideoId": "train-video", "Text": " train token ", "IsToxic": index % 2})
+        split_rows.append({"CommentId": comment_id, "VideoId": "train-video", "split": "train"})
+    rows.extend(
+        [
+            {"CommentId": "validation-row", "VideoId": "validation-video", "Text": " validation token ", "IsToxic": 0},
+            {"CommentId": "test-row", "VideoId": "test-video", "Text": " test token ", "IsToxic": 1},
+            {"CommentId": "train-0", "VideoId": "train-video", "Text": " duplicate row ", "IsToxic": 1},
+            {"CommentId": "excluded", "VideoId": "#NAME?", "Text": "excluded text", "IsToxic": 0},
+        ]
+    )
+    split_rows.extend(
+        [
+            {"CommentId": "validation-row", "VideoId": "validation-video", "split": "validation"},
+            {"CommentId": "test-row", "VideoId": "test-video", "split": "test"},
+        ]
+    )
+    return pd.DataFrame(rows), pd.DataFrame(split_rows)
 
 
-def test_assign_splits_keeps_video_groups_together():
-    dataset = prepare_dataset(synthetic_dataset())
+def test_common_split_is_applied_and_duplicates_are_preserved(tmp_path):
+    raw, split = synthetic_dataset()
+    split_path = tmp_path / "common_split.csv"
+    split.to_csv(split_path, index=False)
+    dataset = prepare_dataset(raw, split_path)
     assert set(dataset["split"]) == {"train", "validation", "test"}
-    assert dataset.groupby("VideoId")["split"].nunique().max() == 1
-    assert len(dataset) == 4
+    assert len(dataset) == len(raw) - 1
+    assert (dataset["CommentId"] == "train-0").sum() == 2
+    assert load_common_split(split_path).shape == (12, 3)
 
 
-def test_prepare_excludes_name_marker_and_preserves_duplicates():
-    dataset = prepare_dataset(synthetic_dataset())
+def test_prepare_excludes_name_marker_and_strips_text(tmp_path):
+    raw, split = synthetic_dataset()
+    split_path = tmp_path / "common_split.csv"
+    split.to_csv(split_path, index=False)
+    dataset = prepare_dataset(raw, split_path)
     assert "#NAME?" not in set(dataset["VideoId"])
-    assert len(dataset) == 4
-    assert dataset["Text"].tolist().count("synthetic text") == 4
+    assert dataset["Text"].iloc[0] == "train token"
 
 
 def test_unknown_video_id_is_rejected():
-    dataset = synthetic_dataset().iloc[:1].copy()
-    dataset.loc[0, "VideoId"] = "unknown-video"
-    with pytest.raises(ValueError, match="outside the approved split"):
-        prepare_dataset(dataset)
+    raw, split = synthetic_dataset()
+    raw.loc[0, "CommentId"] = "unknown"
+    with pytest.raises(ValueError, match="common split"):
+        prepare_dataset(raw, split.assign(CommentId=lambda frame: frame["CommentId"].replace("train-0", "different")))
 
 
 def test_fit_on_train_excludes_validation_and_test_text_from_tfidf():
-    rows = []
-    for index, video_id in enumerate(TRAIN_VIDEO_IDS):
-        rows.append(
-            {
-                "CommentId": f"train-{index}",
-                "VideoId": video_id,
-                "Text": "train only token",
-                "IsToxic": index % 2,
-            }
-        )
-    rows.extend(
-        [
-            {
-                "CommentId": "validation-row",
-                "VideoId": next(iter(VALIDATION_VIDEO_IDS)),
-                "Text": "validation leakage token",
-                "IsToxic": 0,
-            },
-            {
-                "CommentId": "test-row",
-                "VideoId": next(iter(TEST_VIDEO_IDS)),
-                "Text": "test leakage token",
-                "IsToxic": 1,
-            },
-        ]
-    )
-    dataset = prepare_dataset(pd.DataFrame(rows))
+    raw, split = synthetic_dataset()
+    raw.loc[raw["CommentId"] == "validation-row", "Text"] = "validation leakage token"
+    raw.loc[raw["CommentId"] == "test-row", "Text"] = "test leakage token"
+    dataset = prepare_dataset(raw, split)
 
     model = fit_on_train(dataset, calibrate=False)
 
@@ -82,20 +76,25 @@ def test_fit_on_train_excludes_validation_and_test_text_from_tfidf():
 
 
 def test_fit_on_train_calibrates_only_the_train_rows():
-    rows = []
-    for index in range(10):
-        rows.append(
-            {
-                "CommentId": f"train-{index}",
-                "VideoId": next(iter(TRAIN_VIDEO_IDS)),
-                "Text": f"train token {index}",
-                "IsToxic": index % 2,
-            }
-        )
-    dataset = prepare_dataset(pd.DataFrame(rows))
+    raw, split = synthetic_dataset()
+    dataset = prepare_dataset(raw, split)
 
     model = fit_on_train(dataset, calibrate=True)
 
     calibrated = model.named_steps["classifier"]
     assert len(calibrated.calibrated_classifiers_) == 5
     assert all(estimator.estimator.classes_.tolist() == [False, True] for estimator in calibrated.calibrated_classifiers_)
+
+
+def test_evaluate_split_returns_common_output_for_calibrated_pipeline(tmp_path):
+    raw, split = synthetic_dataset()
+    split_path = tmp_path / "common_split.csv"
+    split.to_csv(split_path, index=False)
+    dataset = prepare_dataset(raw, split_path)
+    model = fit_on_train(dataset)
+
+    results = evaluate_split(model, dataset, "validation", threshold=0.5)
+
+    assert list(results.columns) == ["CommentId", "y_true", "score", "probability", "prediction", "split"]
+    assert len(results) == 1
+    assert results["probability"].between(0, 1).all()
