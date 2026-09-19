@@ -1,5 +1,7 @@
 """Comment ingestion and prioritized queue behavior through real HTTP and SQLite."""
 
+import sqlite3
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -90,10 +92,11 @@ def test_existing_duplicate_rejects_entire_batch(client):
     assert client.get("/comments", headers=h).json()["total"] == 1
 
 
-def test_queue_count_matches_visible_scored_rows(client):
-    with client.app.state.database.connect() as connection:
-        connection.execute("INSERT INTO comments(comment_id,video_id,text) VALUES (?,?,?)",
-                           ("unscored", "v1", "Synthetic unscored comment"))
+def test_unscored_rows_are_rejected_and_do_not_change_queue(client):
+    with pytest.raises(sqlite3.IntegrityError), client.app.state.database.connect() as connection:
+        connection.execute("""INSERT INTO comments
+            (id,video_id,text,model_version,source_order)
+            VALUES (?,?,?,?,?)""", ("unscored", "v1", "Synthetic unscored comment", "missing", 1))
     response = client.get("/comments", headers=headers(client))
     assert response.status_code == 200
     assert response.json()["items"] == []
@@ -117,7 +120,7 @@ def test_version_two_migration_preserves_users_sessions_and_comments(tmp_path):
     db = Database(path)
     with db.connect() as connection:
         db._create_persistence_schema(connection)
-        db._create_auth_schema(connection)
+        db._create_auth_support_schema(connection)
         connection.execute("PRAGMA user_version=2")
         connection.execute("INSERT INTO users(id,username,display_name,password_hash,role,created_at) VALUES (?,?,?,?,?,?)",
                            ("u1", "legacy", "Legacy User", "synthetic-hash", "MODERATOR", 1))
@@ -129,10 +132,10 @@ def test_version_two_migration_preserves_users_sessions_and_comments(tmp_path):
                            ("legacy", "v1", "Synthetic existing comment"))
     db.initialize()
     with db.connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
         assert connection.execute("SELECT count(*) FROM users").fetchone()[0] == user_count
         assert connection.execute("SELECT count(*) FROM sessions").fetchone()[0] == 1
-        row = connection.execute("SELECT comment_id,risk_score,model_version,score_source FROM comments").fetchone()
-        assert row["comment_id"] == "legacy"
+        row = connection.execute("SELECT id,risk_score,model_version,score_source FROM comments").fetchone()
+        assert row["id"] == "legacy"
         assert 0 <= row["risk_score"] <= 1
         assert (row["model_version"], row["score_source"]) == ("simulated-v1", "SIMULATED")

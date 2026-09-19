@@ -1,1 +1,1 @@
-"""Comment ingestion and human review queue."""
+"""Human review of shared comments."""
