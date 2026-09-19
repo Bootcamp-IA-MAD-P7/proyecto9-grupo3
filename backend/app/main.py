@@ -17,6 +17,9 @@ from app.comments.scoring import SimulatedScorer
 from app.database import Database
 from app.errors import validation_error
 from app.health import router as health_router
+from app.supervision.repository import SupervisionRepository
+from app.supervision.router import router as supervision_router
+from app.supervision.service import SupervisionService
 
 
 def create_app() -> FastAPI:
@@ -41,6 +44,7 @@ def create_app() -> FastAPI:
     app.state.database = database
     app.state.auth_service = AuthService(AuthRepository(database), settings)
     app.state.comment_service = CommentService(CommentRepository(database), scorer)
+    app.state.supervision_service = SupervisionService(SupervisionRepository(database))
     app.add_exception_handler(RequestValidationError, validation_error)
 
     async def comment_error(request: Request, error: CommentError) -> JSONResponse:
@@ -54,7 +58,7 @@ def create_app() -> FastAPI:
         if request.url.path.startswith("/auth/"):
             response.headers["Cache-Control"] = "no-store"
             response.headers["Pragma"] = "no-cache"
-        if request.url.path.startswith("/comments"):
+        if request.url.path.startswith(("/comments", "/supervisor")):
             response.headers["Cache-Control"] = "no-store"
             response.headers["Pragma"] = "no-cache"
         return response
@@ -62,4 +66,5 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(comments_router)
+    app.include_router(supervision_router)
     return app

@@ -12,6 +12,8 @@ from app.comments.schemas import (
 )
 from app.comments.repository import DuplicateComment
 from app.comments.service import CommentService, ScoringUnavailable
+from app.supervision.schemas import InformationBody, ReopenRequestBody, ReopenResponse
+from app.supervision.service import SupervisionService
 
 router = APIRouter(prefix="/comments", tags=["comments"])
 ReviewUser = Annotated[User, Depends(require_roles(Role.MODERATOR, Role.SUPERVISOR))]
@@ -23,6 +25,13 @@ def get_comment_service(request: Request) -> CommentService:
 
 
 Service = Annotated[CommentService, Depends(get_comment_service)]
+
+
+def get_supervision_service(request: Request) -> SupervisionService:
+    return request.app.state.supervision_service
+
+
+Supervision = Annotated[SupervisionService, Depends(get_supervision_service)]
 
 
 @router.get("/status", response_model=list[CommentSummary])
@@ -69,3 +78,21 @@ def create_review(comment_id: str, body: ReviewRequest, user: ReviewUser, servic
 @router.get("/{comment_id}/history", response_model=HistoryResponse)
 def get_history(comment_id: str, user: ReviewUser, service: Service):
     return service.history(comment_id)
+
+
+@router.post("/{comment_id}/reopen-requests", response_model=ReopenResponse, status_code=201)
+def request_reopen(comment_id: str, body: ReopenRequestBody, user: ReviewUser, service: Supervision):
+    return service.request_reopen(comment_id, user, body)
+
+
+@router.get("/{comment_id}/reopen-requests", response_model=list[ReopenResponse])
+def list_comment_reopen_requests(comment_id: str, user: ReviewUser, service: Supervision):
+    return service.list_requests(comment_id=comment_id)
+
+
+@router.post("/{comment_id}/reopen-requests/{request_id}/information", response_model=ReopenResponse)
+def provide_reopen_information(
+    comment_id: str, request_id: str, body: InformationBody,
+    user: ReviewUser, service: Supervision,
+):
+    return service.provide_info(comment_id, request_id, user, body.note)
