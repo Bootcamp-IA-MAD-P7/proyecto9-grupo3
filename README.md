@@ -25,16 +25,15 @@ comentarios que requieren atención, sin delegar la decisión final en el modelo
 | SDD, OpenSpec y project harness | ✅ | [Project harness](docs/HARNESS.md) |
 | Controles de calidad y seguridad | ✅ | Harness automático y protección de ramas |
 | Base del backend | ✅ | API local con `/health`, documentación y pruebas; [guía del paso 1](docs/backend/01-primer-endpoint.md) |
-| Persistencia del backend | ✅ | SQLite guarda usuarios y comentarios; [guía del paso 2](docs/backend/02-base-de-datos.md) |
 | Autenticación y permisos | ✅ | Login, sesiones SQLite, hashes Argon2id y guard de roles; [guía del paso 3](docs/backend/03-autenticacion-y-permisos.md) |
-| Carga y cola priorizada | ✅ | Lotes validados, puntuación simulada y cola paginada sin texto; [guía del paso 4](docs/backend/04-carga-y-cola-priorizada.md) |
+| Revisión e histórico local | ✅ | Reserva exclusiva, revelación, decisión y auditoría; [guía del paso 5](docs/backend/05-revision-e-historico.md) |
 | Línea base del modelo | ⏳ | Pendiente de entrenamiento y evaluación reproducible |
 | Vertical funcional y demo | ⏳ | Pendiente de implementación |
 | Arquitectura y despliegue AWS | ⏳ | Se decidirán con las necesidades del vertical |
 
-> **Estado verificable:** la API local, la persistencia SQLite, el login y la
-> cola con puntuaciones simuladas están operativos. La revisión humana, el
-> modelo evaluado y el despliegue todavía no están implementados.
+> **Estado verificable:** la API local incluye autenticación y el flujo humano
+> de revisión con ejemplos sintéticos. La ingestión real, el modelo evaluado,
+> las decisiones del supervisor y el despliegue siguen pendientes.
 
 ## Ejecutar la primera API
 
@@ -50,10 +49,6 @@ Abre [la documentación local](http://127.0.0.1:8000/docs) y prueba `GET /health
 La [guía del primer endpoint](docs/backend/01-primer-endpoint.md) explica cada
 archivo, cómo ejecutar las pruebas y qué construiremos en las siguientes entregas.
 
-La [guía de persistencia](docs/backend/02-base-de-datos.md) explica las tablas,
-las transacciones y cómo inspeccionarlas con datos sintéticos. La base local se
-guarda en `data/local/moderation.db` y queda fuera de Git.
-
 Para probar autenticación, carga los usuarios `moderator` y `supervisor` con
 contraseñas elegidas por ti:
 
@@ -62,10 +57,19 @@ contraseñas elegidas por ti:
 ```
 
 La [guía de autenticación y permisos](docs/backend/03-autenticacion-y-permisos.md)
-recorre login, autorización en Swagger y logout.
+recorre login, autorización en Swagger y logout. La base local se guarda en
+`data/local/moderation.db` y queda fuera de Git.
 
-La [guía de carga y cola](docs/backend/04-carga-y-cola-priorizada.md) muestra
-cómo importar comentarios sintéticos y recorrer páginas sin exponer su texto.
+Para practicar la revisión compartida, carga comentarios sintéticos:
+
+```powershell
+.\.venv\Scripts\python.exe -m app.seed_demo_comments
+```
+
+La [guía de revisión e histórico](docs/backend/05-revision-e-historico.md)
+recorre la reserva, revelación, decisión e histórico y explica cómo SQLite
+impide que dos personas reserven el mismo comentario. Las puntuaciones de esos
+ejemplos son simuladas y no representan un modelo evaluado.
 
 ## El problema
 
@@ -181,8 +185,12 @@ git diff --check
 └── README.md                 # Visión general y estado verificable
 ```
 
-La API, la base de datos, la autenticación y la cola simulada están implementadas.
-La revisión humana, el modelo evaluado y la infraestructura se añadirán después.
+La API local integra importación de lotes, cola, revisión y supervisión con una
+interfaz mínima en `/ui/`. La puntuación simulada permite recorrer el flujo con
+datos sintéticos. Un modelo local entrenado se puede conectar mediante
+`MODERATION_SCORER_MODE=model`; aún no hay un artefacto entrenado ni datos crudos
+en este worktree para evaluar su calidad. Véase la
+[guía del paso 7](docs/backend/07-integracion-completa.md).
 
 ## Documentación
 

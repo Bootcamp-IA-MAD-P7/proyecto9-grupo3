@@ -1,10 +1,12 @@
 """Assemble the application; run with uvicorn app.main:create_app --factory."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.auth.repository import AuthRepository
 from app.auth.router import router as auth_router
@@ -13,7 +15,7 @@ from app.config import Settings
 from app.comments.repository import CommentError, CommentRepository
 from app.comments.router import router as comments_router
 from app.comments.service import CommentService
-from app.comments.scoring import SimulatedScorer
+from app.comments.scoring import ModelScorer, SimulatedScorer
 from app.database import Database
 from app.errors import validation_error
 from app.health import router as health_router
@@ -25,7 +27,12 @@ from app.supervision.service import SupervisionService
 def create_app() -> FastAPI:
     settings = Settings()
     database = Database(settings.database_path)
-    scorer = SimulatedScorer()
+    if settings.scorer_mode == "model":
+        if settings.model_path is None:
+            raise ValueError("MODERATION_MODEL_PATH is required in model mode")
+        scorer = ModelScorer(settings.model_path, settings.model_version)
+    else:
+        scorer = SimulatedScorer()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -67,4 +74,5 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(comments_router)
     app.include_router(supervision_router)
+    app.mount("/ui", StaticFiles(directory=Path(__file__).resolve().parents[2] / "frontend", html=True), name="ui")
     return app

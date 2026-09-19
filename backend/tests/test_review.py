@@ -353,4 +353,3 @@ def test_synthetic_seed_is_explicit_idempotent_and_preserves_decisions(review_cl
     with database.connect() as connection:
         assert connection.execute("SELECT status FROM comments WHERE id='C-DEMO-001'").fetchone()[0] == "CLASSIFIED"
         assert connection.execute("SELECT count(*) FROM reviews WHERE comment_id='C-DEMO-001'").fetchone()[0] == 1
-

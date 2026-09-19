@@ -302,4 +302,3 @@ def test_concurrent_request_decisions_have_one_winner(scenario):
             assert sorted(item.result(timeout=10) for item in results) == [200, 409]
     with db.connect() as connection:
         assert connection.execute("SELECT count(*) FROM audit_events WHERE event_type IN ('reopen_approved', 'reopen_rejected')").fetchone()[0] == 1
-

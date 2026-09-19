@@ -60,6 +60,11 @@ def queue(user: ReviewUser, service: Service,
                      has_next=page * page_size < total)
 
 
+@router.get("/assigned", response_model=list[CommentSummary])
+def assigned_comments(user: ReviewUser, service: Service):
+    return service.repository.assigned_to(user.id)
+
+
 @router.post("/{comment_id}/claim", response_model=ClaimResponse)
 def claim_comment(comment_id: str, user: ReviewUser, service: Service):
     return service.claim(comment_id, user)

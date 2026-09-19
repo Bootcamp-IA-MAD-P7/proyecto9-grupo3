@@ -109,6 +109,17 @@ class CommentRepository:
             ).fetchall()
             return [dict(row) for row in rows], total
 
+    def assigned_to(self, user_id: str) -> list[dict]:
+        with self.database.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            self._expire_claims(connection, self._now())
+            rows = connection.execute("""SELECT c.id AS comment_id, c.video_id,
+                c.risk_score, c.model_version, c.status FROM comments c
+                JOIN assignments a ON a.comment_id=c.id
+                WHERE a.reviewer_id=? AND a.closed_at IS NULL AND c.status='IN_REVIEW'
+                ORDER BY a.claimed_at DESC, a.id DESC""", (user_id,)).fetchall()
+            return [dict(row) for row in rows]
+
     def list_summaries(self, status: str) -> list[dict]:
         with self.database.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")

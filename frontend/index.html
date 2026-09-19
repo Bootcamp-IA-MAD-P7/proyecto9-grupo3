@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Moderación de comentarios</title>
+  <link rel="stylesheet" href="/ui/styles.css">
+  <script src="/ui/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><h1>Moderación de comentarios</h1><p>Revisión humana de ejemplos locales</p></header>
+    <p id="notice" role="status" aria-live="polite"></p>
+    <section id="login-panel" class="card">
+      <h2>Iniciar sesión</h2>
+      <form id="login-form">
+        <label>Usuario <input name="username" autocomplete="username" required></label>
+        <label>Contraseña <input name="password" type="password" autocomplete="current-password" required></label>
+        <button>Entrar</button>
+      </form>
+    </section>
+    <div id="workspace" hidden>
+      <nav><span id="identity"></span><button id="logout">Salir</button></nav>
+      <section class="card">
+        <h2>Cola pendiente</h2>
+        <p>La puntuación ordena la revisión; no decide por el equipo.</p>
+        <div class="toolbar"><button id="refresh-queue">Actualizar</button><button id="previous-page">Anterior</button><span id="page-label"></span><button id="next-page">Siguiente</button></div>
+        <div id="queue" class="list"></div>
+      </section>
+      <section class="card"><h2>Mis asignaciones</h2><button id="refresh-assigned">Actualizar</button><div id="assigned" class="list"></div></section>
+      <section class="card">
+        <h2>Comentario seleccionado</h2>
+        <p id="selection">Selecciona un elemento de la cola.</p>
+        <div class="toolbar"><button id="claim" disabled>Tomar</button><button id="reveal" disabled>Mostrar texto</button><button id="history" disabled>Ver historial</button></div>
+        <p id="comment-text" class="comment" hidden></p>
+        <form id="review-form" hidden>
+          <label>Resultado <select name="result"><option value="NO_ESCALATION">Sin escalación</option><option value="ESCALATE_TO_SUPERVISOR">Escalar</option><option value="INSUFFICIENT_CONTEXT">Contexto insuficiente</option><option value="TRANSFER_REQUESTED">Solicitar transferencia</option></select></label>
+          <label>Motivo <textarea name="reason" minlength="1" maxlength="1000" required></textarea></label>
+          <button>Guardar revisión</button>
+        </form>
+        <div id="history-list" class="list"></div>
+        <form id="history-form"><h3>Consultar historial por ID</h3><label>ID del comentario <input name="comment_id" required></label><button>Consultar historial</button></form>
+      </section>
+      <section id="supervisor-panel" class="card" hidden>
+        <h2>Supervisión</h2>
+        <details><summary>Importar ejemplos</summary><form id="import-form"><p>Una línea por comentario: ID | video | texto</p><textarea name="items" rows="5" required></textarea><button>Importar</button></form></details>
+        <h3>Escalaciones</h3><button id="refresh-escalations">Actualizar escalaciones</button><div id="escalations" class="list"></div>
+        <form id="resolve-form"><h3>Resolver</h3><label>ID del comentario <input name="comment_id" required></label><label>Motivo <input name="reason" required></label><label><input type="checkbox" name="recommend_removal"> Recomendar retirada para revisión humana</label><button>Resolver</button></form>
+        <form id="reassign-form"><h3>Reasignar</h3><label>ID del comentario <input name="comment_id" required></label><label>ID del revisor <input name="reviewer_id" required></label><label>Motivo <input name="reason" required></label><button>Reasignar</button></form>
+        <h3>Solicitudes de reapertura</h3><button id="refresh-reopen">Actualizar solicitudes</button><div id="reopen-requests" class="list"></div>
+        <form id="reopen-decision-form"><label>ID de solicitud <input name="request_id" required></label><label>Decisión <select name="action"><option value="approve">Aprobar</option><option value="reject">Rechazar</option><option value="request-info">Pedir información</option></select></label><label>Motivo <input name="reason" required></label><button>Guardar decisión</button></form>
+      </section>
+      <section class="card"><h2>Reapertura</h2><form id="reopen-form"><label>ID del comentario <input name="comment_id" required></label><label>Motivo <input name="reason" required></label><button>Solicitar reapertura</button></form>
+        <form id="reopen-info-form"><h3>Responder a una petición de información</h3><label>ID del comentario <input name="comment_id" required></label><label>ID de solicitud <input name="request_id" required></label><label>Información <input name="note" required></label><button>Enviar información</button></form></section>
+    </div>
+  </main>
+</body>
+</html>

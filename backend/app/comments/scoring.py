@@ -4,6 +4,7 @@ import hashlib
 import math
 from dataclasses import dataclass
 from typing import Protocol
+from pathlib import Path
 
 
 
@@ -31,3 +32,25 @@ class SimulatedScorer:
     def score_comment(self, text: str) -> Score:
         digest = hashlib.sha256(text.encode("utf-8")).digest()
         return Score(int.from_bytes(digest[:2], "big") / 65535, 1.0, "simulated-v1", "SIMULATED")
+
+
+class ModelScorer:
+    """Load an operator-provided trusted sklearn pipeline once at startup."""
+
+    def __init__(self, path: Path, version: str):
+        import joblib
+
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        if not version.strip():
+            raise ValueError("Model version is required")
+        self.pipeline = joblib.load(path)
+        classes = list(self.pipeline.classes_)
+        if 1 not in classes:
+            raise ValueError("Model must expose positive class 1")
+        self.positive_index = classes.index(1)
+        self.version = version
+
+    def score_comment(self, text: str) -> Score:
+        probability = float(self.pipeline.predict_proba([text])[0][self.positive_index])
+        return Score(probability, 1 - abs(2 * probability - 1), self.version, "MODEL")

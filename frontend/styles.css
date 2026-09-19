@@ -1,0 +1,28 @@
+:root { font-family: system-ui, sans-serif; color: #1b2530; background: #f3f6fa; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 960px; padding: 24px; margin: auto; }
+header { margin-bottom: 24px; }
+h1 { margin-bottom: 4px; }
+h2 { margin-top: 0; }
+.card { background: white; padding: 20px; border-radius: 12px; margin: 16px 0; box-shadow: 0 2px 12px #1a355018; }
+nav, .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+nav { justify-content: space-between; }
+form { display: grid; gap: 12px; max-width: 620px; }
+label { display: grid; gap: 5px; font-weight: 600; }
+input, select, textarea, button { font: inherit; }
+input, select, textarea { padding: 9px; border: 1px solid #aeb9c6; border-radius: 6px; width: 100%; }
+textarea { min-height: 84px; }
+input[type="checkbox"] { width: auto; }
+button { cursor: pointer; border: 0; border-radius: 6px; background: #155a92; color: white; padding: 9px 13px; }
+button:hover { background: #0f456f; }
+button:disabled { background: #a5b3bf; cursor: default; }
+.list { display: grid; gap: 8px; margin-top: 12px; }
+.list button { text-align: left; background: #e6f0f9; color: #16334f; }
+.list button:hover { background: #cfdfef; }
+.list p { border-bottom: 1px solid #dce3eb; padding-bottom: 8px; }
+.comment { white-space: pre-wrap; background: #fff7e8; border-left: 4px solid #e7ac3e; padding: 12px; }
+#notice { min-height: 1.5em; color: #174b73; font-weight: 600; }
+details { margin: 16px 0; }
+summary { cursor: pointer; font-weight: 600; }
+[hidden] { display: none !important; }

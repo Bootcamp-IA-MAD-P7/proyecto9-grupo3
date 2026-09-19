@@ -1,6 +1,7 @@
 """Load and validate the settings used to assemble the API."""
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -20,3 +21,6 @@ class Settings(BaseSettings):
     session_ttl_seconds: int = Field(default=1800, ge=60, le=86400)
     login_max_attempts: int = Field(default=5, ge=1, le=100)
     login_window_seconds: int = Field(default=60, ge=1, le=3600)
+    scorer_mode: Literal["simulated", "model"] = "simulated"
+    model_path: Path | None = None
+    model_version: str = "tfidf-logistic-regression-v1"
