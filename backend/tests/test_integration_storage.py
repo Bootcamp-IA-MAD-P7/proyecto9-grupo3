@@ -90,3 +90,32 @@ def test_dev_queue_migration_keeps_active_assignee(tmp_path):
             FROM assignments WHERE comment_id='assigned-1' AND closed_at IS NULL""").fetchone()
         assert assignment["reviewer_id"] == "u-1"
         assert assignment["expires_at"] > int(time.time())
+
+
+def test_legacy_assignee_edge_cases_preserve_data_and_start(tmp_path):
+    path = tmp_path / "legacy-assignees.db"
+    database = Database(path)
+    with database.connect() as connection:
+        database._create_persistence_schema(connection)
+        database._create_auth_support_schema(connection)
+        connection.execute("""INSERT INTO users
+            (id, username, display_name, password_hash, role, created_at)
+            VALUES ('u-1', 'moderator', 'Moderator', 'synthetic-hash', 'MODERATOR', 1)""")
+        connection.execute("""INSERT INTO comments
+            (comment_id, video_id, text, status, assignee_id)
+            VALUES ('pending-assigned', 'video-1', 'synthetic one', 'PENDING', 'u-1')""")
+        connection.execute("""INSERT INTO comments
+            (comment_id, video_id, text, status, assignee_id)
+            VALUES ('review-unassigned', 'video-1', 'synthetic two', 'IN_REVIEW', NULL)""")
+        connection.execute("PRAGMA user_version=2")
+    database.initialize()
+    with database.connect() as connection:
+        preserved = connection.execute("""SELECT reviewer_id, closed_at
+            FROM assignments WHERE comment_id='pending-assigned'""").fetchone()
+        assert preserved["reviewer_id"] == "u-1"
+        assert preserved["closed_at"] is not None
+        status = connection.execute(
+            "SELECT status FROM comments WHERE id='review-unassigned'"
+        ).fetchone()[0]
+        assert status == "PENDING"
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []

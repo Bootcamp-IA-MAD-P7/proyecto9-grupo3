@@ -72,7 +72,9 @@ origen de puntuación. Todo sucede en una transacción; una forma desconocida se
 rechaza sin alterar la base. Para datos importantes, realiza una copia del
 archivo SQLite antes de abrirlo con esta versión. Una asignación `IN_REVIEW`
 antigua conserva su revisor y recibe un nuevo plazo de 15 minutos, ya que el
-esquema antiguo no guardaba cuándo vencía.
+esquema antiguo no guardaba cuándo vencía. Una relación histórica fuera de
+`IN_REVIEW` se conserva como asignación cerrada. Un `IN_REVIEW` antiguo sin
+responsable vuelve a `PENDING` para que el sistema pueda arrancar y reasignarlo.
 
 ## Estado de verificación
 

@@ -75,8 +75,6 @@ class Database:
         from app.comments.scoring import SimulatedScorer
 
         rows = connection.execute("SELECT * FROM comments ORDER BY sequence").fetchall()
-        if any(row["status"] == "IN_REVIEW" and not row["assignee_id"] for row in rows):
-            raise RuntimeError("Legacy in-review comment has no assignee")
         connection.execute("DROP INDEX IF EXISTS comments_queue")
         connection.execute("DROP INDEX IF EXISTS comments_status_order")
         connection.execute("ALTER TABLE comments RENAME TO legacy_queue_comments")
@@ -85,6 +83,11 @@ class Database:
         scorer = SimulatedScorer()
         for row in rows:
             keys = set(row.keys())
+            migrated_status = (
+                "PENDING"
+                if row["status"] == "IN_REVIEW" and not row["assignee_id"]
+                else row["status"]
+            )
             if "risk_score" in keys and row["risk_score"] is not None:
                 risk_score = row["risk_score"]
                 uncertainty = row["uncertainty"]
@@ -99,14 +102,18 @@ class Database:
                  score_source, source_order, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""", (
                 row["comment_id"], row["video_id"], row["text"], risk_score,
-                uncertainty, model_version, score_source, row["sequence"], row["status"],
+                uncertainty, model_version, score_source, row["sequence"], migrated_status,
             ))
-            if row["status"] == "IN_REVIEW":
+            if row["assignee_id"] and row["status"] == "IN_REVIEW":
                 connection.execute("""INSERT INTO assignments
                     (comment_id, reviewer_id, claimed_at, expires_at)
                     VALUES (?, ?, ?, ?)""", (
                         row["comment_id"], row["assignee_id"], claimed_at, claimed_at + 900,
                     ))
+            elif row["assignee_id"]:
+                connection.execute("""INSERT INTO assignments
+                    (comment_id, reviewer_id, claimed_at, expires_at, closed_at)
+                    VALUES (?, ?, 0, 1, 1)""", (row["comment_id"], row["assignee_id"]))
         connection.execute("DROP TABLE legacy_queue_comments")
 
     @staticmethod

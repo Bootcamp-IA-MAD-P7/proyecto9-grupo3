@@ -19,6 +19,12 @@ without changing them.
 - **WHEN** a version 3 queue database has an in-review comment with an assignee
 - **THEN** initialization preserves that assignee with a fresh finite claim lease
 
+#### Scenario: Legacy inconsistent assignment state
+
+- **WHEN** a legacy comment has an assignee outside active review
+- **THEN** initialization preserves the relationship as a closed assignment
+- **AND** an in-review comment without an assignee safely returns to pending
+
 ### Requirement: Import and queue
 
 Only supervisors SHALL import validated batches. The batch SHALL be atomic.

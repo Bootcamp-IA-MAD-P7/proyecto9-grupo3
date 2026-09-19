@@ -1,6 +1,6 @@
 # Evidence
 
-- Full local suite: 106 passed, 2 dependency deprecation warnings
+- Full local suite: 107 passed, 2 dependency deprecation warnings
   (pytest, Python 3.12, isolated temp database).
 - `python -m pip check`: no broken requirements.
 - `node --check frontend/app.js`: passed.
