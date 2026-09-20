@@ -87,13 +87,37 @@ def run_baseline(dataset_path: str | Path, split_path: str | Path, output_path: 
     """Run train-only fitting, validation thresholding, test evaluation, and export."""
     from src.moderation.data.extract import extract_dataset
 
+    output_path = Path(output_path)
+    if output_path.suffix.lower() == ".csv":
+        test_output_path = output_path
+        validation_output_path = output_path.parent / "svm_tfidf_validation_results.csv"
+    else:
+        validation_output_path = output_path / "svm_tfidf_validation_results.csv"
+        test_output_path = output_path / "svm_tfidf_test_results.csv"
+    validation_output_path.parent.mkdir(parents=True, exist_ok=True)
+
     dataset = prepare_dataset(extract_dataset(dataset_path), split_path)
     model = fit_on_train(dataset)
-    validation = evaluate_split(model, dataset, "validation", threshold=0.5)
-    threshold = choose_threshold(validation["y_true"], validation["probability"])
+    validation_for_threshold = evaluate_split(model, dataset, "validation", threshold=0.5)
+    threshold = choose_threshold(
+        validation_for_threshold["y_true"],
+        validation_for_threshold["probability"],
+    )
+    validation = evaluate_split(model, dataset, "validation", threshold=threshold)
+    validation_metrics = summarize_metrics(validation)
     results = evaluate_split(model, dataset, "test", threshold=threshold)
-    export_results(results, output_path)
-    return {"threshold": threshold, "validation": validation, "test": results}
+    test_metrics = summarize_metrics(results)
+    export_results(validation, validation_output_path)
+    export_results(results, test_output_path)
+    return {
+        "threshold": threshold,
+        "validation": validation,
+        "validation_metrics": validation_metrics,
+        "validation_output_path": validation_output_path,
+        "test": results,
+        "test_metrics": test_metrics,
+        "test_output_path": test_output_path,
+    }
 
 
 def choose_threshold(y_true: Iterable[bool], probabilities: Iterable[float]) -> float:
@@ -118,7 +142,10 @@ def evaluate_split(model: Pipeline, dataset: pd.DataFrame, split: str, threshold
     if not hasattr(classifier, "predict_proba"):
         raise ValueError("The fitted classifier must provide predict_proba")
     probability = model.predict_proba(texts)[:, 1]
-    score = classifier.decision_function(model.named_steps["tfidf"].transform(texts)) if hasattr(classifier, "decision_function") else np.full(len(subset), np.nan)
+    if hasattr(classifier, "decision_function"):
+        score = classifier.decision_function(model.named_steps["tfidf"].transform(texts))
+    else:
+        score = probability
     return pd.DataFrame(
         {
             "CommentId": subset["CommentId"].to_numpy(),
@@ -141,7 +168,9 @@ def summarize_metrics(results: pd.DataFrame) -> dict[str, object]:
         "f1": f1_score(y_true, predicted, zero_division=0),
         "confusion_matrix": confusion_matrix(y_true, predicted).tolist(),
     }
-    if results["probability"].notna().all():
+    metrics["pr_auc"] = None
+    metrics["brier_score"] = None
+    if results["probability"].notna().all() and y_true.nunique() >= 2:
         probability = results["probability"].astype(float)
         metrics["pr_auc"] = average_precision_score(y_true, probability)
         metrics["brier_score"] = brier_score_loss(y_true, probability)
@@ -150,4 +179,6 @@ def summarize_metrics(results: pd.DataFrame) -> dict[str, object]:
 
 def export_results(results: pd.DataFrame, path: str | Path) -> None:
     """Write only the common prediction schema; callers choose an ignored path."""
+    if results["CommentId"].isna().any() or results["CommentId"].duplicated().any():
+        raise ValueError("Results must contain unique, non-null CommentId values")
     results[RESULT_COLUMNS].to_csv(path, index=False)

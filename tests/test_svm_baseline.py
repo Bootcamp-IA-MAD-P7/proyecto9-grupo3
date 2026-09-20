@@ -2,10 +2,15 @@ import pandas as pd
 import pytest
 
 from src.moderation.modeling.svm_baseline import (
+    RESULT_COLUMNS,
+    choose_threshold,
     evaluate_split,
+    export_results,
     fit_on_train,
     load_common_split,
     prepare_dataset,
+    run_baseline,
+    summarize_metrics,
 )
 
 
@@ -105,3 +110,180 @@ def test_evaluate_split_returns_common_output_for_calibrated_pipeline(tmp_path):
     assert list(results.columns) == ["CommentId", "y_true", "score", "probability", "prediction", "split"]
     assert len(results) == 1
     assert results["probability"].between(0, 1).all()
+    assert results["score"].notna().all()
+    assert results["score"].equals(results["probability"])
+
+
+def test_choose_threshold_maximizes_f1_deterministically():
+    threshold = choose_threshold(
+        [False, True, True, False],
+        [0.1, 0.4, 0.8, 0.9],
+    )
+
+    assert threshold == 0.4
+
+
+def test_summarize_metrics_returns_classification_and_probability_metrics():
+    results = pd.DataFrame(
+        {
+            "y_true": [False, True, True, False],
+            "prediction": [False, True, False, True],
+            "probability": [0.1, 0.8, 0.4, 0.7],
+        }
+    )
+
+    metrics = summarize_metrics(results)
+
+    assert metrics["precision"] == pytest.approx(0.5)
+    assert metrics["recall"] == pytest.approx(0.5)
+    assert metrics["f1"] == pytest.approx(0.5)
+    assert metrics["confusion_matrix"] == [[1, 1], [1, 1]]
+    assert metrics["pr_auc"] == pytest.approx(5 / 6)
+    assert metrics["brier_score"] == pytest.approx(0.225)
+
+
+def test_summarize_metrics_returns_none_for_single_class_probability_metrics():
+    results = pd.DataFrame(
+        {
+            "y_true": [False, False],
+            "prediction": [False, True],
+            "probability": [0.1, 0.7],
+        }
+    )
+
+    metrics = summarize_metrics(results)
+
+    assert metrics["pr_auc"] is None
+    assert metrics["brier_score"] is None
+
+
+def test_export_results_writes_only_result_columns(tmp_path):
+    results = pd.DataFrame(
+        {
+            "CommentId": ["comment-1"],
+            "y_true": [True],
+            "score": [0.8],
+            "probability": [0.7],
+            "prediction": [True],
+            "split": ["test"],
+            "internal": ["must not export"],
+        }
+    )
+    output_path = tmp_path / "results.csv"
+
+    export_results(results, output_path)
+
+    exported = pd.read_csv(output_path)
+    assert exported.columns.tolist() == RESULT_COLUMNS
+    assert exported["CommentId"].tolist() == ["comment-1"]
+
+
+def test_export_results_rejects_null_or_duplicate_comment_ids(tmp_path):
+    results = pd.DataFrame(
+        {
+            "CommentId": ["duplicate", "duplicate"],
+            "y_true": [True, False],
+            "score": [0.8, 0.2],
+            "probability": [0.7, 0.1],
+            "prediction": [True, False],
+            "split": ["validation", "validation"],
+        }
+    )
+
+    with pytest.raises(ValueError, match="unique, non-null CommentId"):
+        export_results(results, tmp_path / "results.csv")
+
+
+def test_run_baseline_end_to_end_uses_validation_threshold_and_exports_test_only(tmp_path):
+    rows = []
+    split_rows = []
+    for index in range(10):
+        comment_id = f"train-{index}"
+        rows.append(
+            {
+                "CommentId": comment_id,
+                "VideoId": "train-video",
+                "Text": f"train token {index}",
+                "IsToxic": index % 2,
+            }
+        )
+        split_rows.append(
+            {
+                "CommentId": comment_id,
+                "VideoId": "train-video",
+                "split": "train",
+            }
+        )
+    rows.extend(
+        [
+            {
+                "CommentId": "validation-0",
+                "VideoId": "validation-video",
+                "Text": "validation unique token",
+                "IsToxic": 0,
+            },
+            {
+                "CommentId": "validation-1",
+                "VideoId": "validation-video",
+                "Text": "validation unique token toxic",
+                "IsToxic": 1,
+            },
+            {
+                "CommentId": "test-0",
+                "VideoId": "test-video",
+                "Text": "test unique token",
+                "IsToxic": 0,
+            },
+            {
+                "CommentId": "test-1",
+                "VideoId": "test-video",
+                "Text": "test unique token toxic",
+                "IsToxic": 1,
+            },
+        ]
+    )
+    split_rows.extend(
+        [
+            {"CommentId": "validation-0", "VideoId": "validation-video", "split": "validation"},
+            {"CommentId": "validation-1", "VideoId": "validation-video", "split": "validation"},
+            {"CommentId": "test-0", "VideoId": "test-video", "split": "test"},
+            {"CommentId": "test-1", "VideoId": "test-video", "split": "test"},
+        ]
+    )
+    dataset_path = tmp_path / "dataset.csv"
+    split_path = tmp_path / "common_split.csv"
+    output_path = tmp_path / "results"
+    pd.DataFrame(rows).to_csv(dataset_path, index=False)
+    pd.DataFrame(split_rows).to_csv(split_path, index=False)
+
+    result = run_baseline(dataset_path, split_path, output_path)
+
+    assert set(result) == {
+        "threshold",
+        "validation",
+        "validation_metrics",
+        "validation_output_path",
+        "test",
+        "test_metrics",
+        "test_output_path",
+    }
+    assert set(result["validation"]["split"]) == {"validation"}
+    assert set(result["test"]["split"]) == {"test"}
+    assert isinstance(result["threshold"], float)
+    assert (
+        result["validation"]["prediction"]
+        == (result["validation"]["probability"] >= result["threshold"])
+    ).all()
+    assert result["validation_metrics"] == summarize_metrics(result["validation"])
+    assert "f1" in result["validation_metrics"]
+    assert "pr_auc" in result["test_metrics"]
+    validation_output = tmp_path / "results" / "svm_tfidf_validation_results.csv"
+    test_output = tmp_path / "results" / "svm_tfidf_test_results.csv"
+    assert result["validation_output_path"] == validation_output
+    assert result["test_output_path"] == test_output
+    assert pd.read_csv(validation_output).columns.tolist() == RESULT_COLUMNS
+    assert pd.read_csv(test_output).columns.tolist() == RESULT_COLUMNS
+    assert pd.read_csv(validation_output)["split"].tolist() == ["validation", "validation"]
+    assert pd.read_csv(test_output)["split"].tolist() == ["test", "test"]
+    assert pd.read_csv(validation_output)["CommentId"].is_unique
+    assert pd.read_csv(test_output)["CommentId"].is_unique
