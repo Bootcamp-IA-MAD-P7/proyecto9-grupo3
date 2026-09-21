@@ -83,8 +83,14 @@ def fit_on_train(dataset: pd.DataFrame, *, calibrate: bool = True) -> Pipeline:
     return model
 
 
-def run_baseline(dataset_path: str | Path, split_path: str | Path, output_path: str | Path) -> dict[str, object]:
-    """Run train-only fitting, validation thresholding, test evaluation, and export."""
+def run_baseline(
+    dataset_path: str | Path,
+    split_path: str | Path,
+    output_path: str | Path,
+    *,
+    final_test: bool = False,
+) -> dict[str, object]:
+    """Run train-only fitting and open the test split only when explicitly requested."""
     from src.moderation.data.extract import extract_dataset
 
     output_path = Path(output_path)
@@ -95,6 +101,11 @@ def run_baseline(dataset_path: str | Path, split_path: str | Path, output_path: 
         validation_output_path = output_path / "svm_tfidf_validation_results.csv"
         test_output_path = output_path / "svm_tfidf_test_results.csv"
     validation_output_path.parent.mkdir(parents=True, exist_ok=True)
+    if not final_test and test_output_path.exists():
+        raise ValueError(
+            "Output directory contains stale svm_tfidf_test_results.csv; use a "
+            "clean validation directory or explicitly request final_test=True"
+        )
 
     dataset = prepare_dataset(extract_dataset(dataset_path), split_path)
     model = fit_on_train(dataset)
@@ -105,19 +116,24 @@ def run_baseline(dataset_path: str | Path, split_path: str | Path, output_path: 
     )
     validation = evaluate_split(model, dataset, "validation", threshold=threshold)
     validation_metrics = summarize_metrics(validation)
-    results = evaluate_split(model, dataset, "test", threshold=threshold)
-    test_metrics = summarize_metrics(results)
     export_results(validation, validation_output_path)
-    export_results(results, test_output_path)
-    return {
+    report = {
         "threshold": threshold,
         "validation": validation,
         "validation_metrics": validation_metrics,
         "validation_output_path": validation_output_path,
-        "test": results,
-        "test_metrics": test_metrics,
-        "test_output_path": test_output_path,
     }
+    if final_test:
+        results = evaluate_split(model, dataset, "test", threshold=threshold)
+        report.update(
+            {
+                "test": results,
+                "test_metrics": summarize_metrics(results),
+                "test_output_path": test_output_path,
+            }
+        )
+        export_results(results, test_output_path)
+    return report
 
 
 def choose_threshold(y_true: Iterable[bool], probabilities: Iterable[float]) -> float:
