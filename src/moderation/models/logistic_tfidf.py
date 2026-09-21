@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
@@ -17,20 +18,38 @@ from sklearn.metrics import (
 )
 from sklearn.pipeline import Pipeline
 
-from src.moderation.data.extract import extract_dataset
+from src.moderation.data.extract import validate_dataset
 
 
 SPLITS = ("train", "validation", "test")
-THRESHOLD = 0.5  # Reporting convention; not an optimized moderation policy.
+DEFAULT_THRESHOLD = 0.5
+TARGET_RECALL = 0.8
+REVIEW_SIZES = (10, 20, 50, 100)
+
+
+def _read_dataset(dataset_path: str | Path) -> pd.DataFrame:
+    # IDs and text are strings even when a CSV column contains only digits.
+    # Preserve literal text such as "NA" instead of interpreting it as null.
+    dataset = pd.read_csv(
+        dataset_path,
+        dtype={"CommentId": "string", "VideoId": "string", "Text": "string"},
+        keep_default_na=False,
+    )
+    validate_dataset(dataset)
+    return dataset
 
 
 def load_partitions(dataset_path: str | Path, manifest_path: str | Path) -> dict[str, pd.DataFrame]:
     """Join the agreed split to raw rows and reject incomplete or leaking splits."""
-    dataset = extract_dataset(dataset_path)
-    manifest = pd.read_csv(manifest_path, dtype="string")
+    dataset = _read_dataset(dataset_path)
+    manifest = pd.read_csv(manifest_path, dtype="string", keep_default_na=False)
     required = {"CommentId", "VideoId", "split"}
     if not required.issubset(manifest.columns):
         raise ValueError(f"Manifest missing columns: {sorted(required - set(manifest.columns))}")
+    for name, frame in (("Dataset", dataset), ("Manifest", manifest)):
+        for column in ("CommentId", "VideoId"):
+            if (frame[column].isna() | frame[column].str.strip().eq("")).any():
+                raise ValueError(f"{name} {column} must be present and nonblank")
     if dataset["CommentId"].isna().any() or dataset["CommentId"].duplicated().any():
         raise ValueError("Dataset CommentId must be present and unique")
     if manifest["CommentId"].isna().any() or manifest["CommentId"].duplicated().any():
@@ -67,7 +86,8 @@ def load_partitions(dataset_path: str | Path, manifest_path: str | Path) -> dict
     if any(part.empty for part in partitions.values()):
         raise ValueError("Train, validation and test must each contain rows")
     normalized_texts = {
-        split: set(part["Text"].str.strip()) for split, part in partitions.items()
+        split: set(part["Text"].str.lower().str.split().str.join(" "))
+        for split, part in partitions.items()
     }
     if any(
         normalized_texts[left] & normalized_texts[right]
@@ -84,22 +104,76 @@ def build_pipeline() -> Pipeline:
             (
                 "tfidf",
                 TfidfVectorizer(
-                    tokenizer=str.split,
-                    token_pattern=None,
-                    lowercase=False,
-                    ngram_range=(1, 2),
+                    analyzer="char_wb",
+                    ngram_range=(3, 5),
+                    min_df=2,
+                    sublinear_tf=True,
                 ),
             ),
-            ("logistic", LogisticRegression(max_iter=1000, solver="liblinear", random_state=42)),
+            (
+                "logistic",
+                LogisticRegression(
+                    C=3,
+                    class_weight="balanced",
+                    max_iter=1000,
+                    solver="liblinear",
+                    random_state=42,
+                ),
+            ),
         ]
     )
 
 
-def evaluate(model: Pipeline, partition: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+def select_threshold(
+    actual: np.ndarray,
+    probability: np.ndarray,
+    *,
+    target_recall: float = TARGET_RECALL,
+) -> float:
+    """Choose the highest validation threshold that reaches target recall."""
+    if not 0 < target_recall <= 1:
+        raise ValueError("target_recall must be in (0, 1]")
+    if int(np.sum(actual)) == 0:
+        raise ValueError("Threshold selection requires positive validation rows")
+    for threshold in sorted(np.unique(probability), reverse=True):
+        predicted = probability >= threshold
+        if recall_score(actual, predicted) >= target_recall:
+            return float(threshold)
+    raise RuntimeError("No threshold reaches the requested recall")
+
+
+def ranking_metrics(
+    actual: np.ndarray,
+    probability: np.ndarray,
+    *,
+    review_sizes: tuple[int, ...] = REVIEW_SIZES,
+) -> dict[str, dict[str, float | int]]:
+    """Measure toxic coverage within reviewable prefixes of the ranked queue."""
+    order = np.argsort(-probability, kind="stable")
+    positives = int(np.sum(actual))
+    metrics = {}
+    for size in review_sizes:
+        if size > len(actual):
+            continue
+        found = int(np.sum(actual[order[:size]]))
+        metrics[str(size)] = {
+            "precision": found / size,
+            "recall": found / positives if positives else 0.0,
+            "toxic_found": found,
+        }
+    return metrics
+
+
+def evaluate(
+    model: Pipeline,
+    partition: pd.DataFrame,
+    *,
+    threshold: float = DEFAULT_THRESHOLD,
+) -> tuple[pd.DataFrame, dict]:
     """Return aligned probabilities and classification/ranking/calibration metrics."""
     actual = partition["IsToxic"].astype(int).to_numpy()
     probability = model.predict_proba(partition["Text"].str.strip())[:, 1]
-    predicted = (probability >= THRESHOLD).astype(int)
+    predicted = (probability >= threshold).astype(int)
     predictions = pd.DataFrame(
         {
             "CommentId": partition["CommentId"].to_numpy(),
@@ -115,6 +189,7 @@ def evaluate(model: Pipeline, partition: pd.DataFrame) -> tuple[pd.DataFrame, di
         "confusion_matrix": confusion_matrix(actual, predicted, labels=[0, 1]).tolist(),
         "pr_auc": float(average_precision_score(actual, probability)),
         "brier_score": float(brier_score_loss(actual, probability)),
+        "ranking": ranking_metrics(actual, probability),
     }
     return predictions, metrics
 
@@ -137,23 +212,36 @@ def run_training(
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, output / "logistic_tfidf.joblib")
-    validation_predictions, validation_metrics = evaluate(model, partitions["validation"])
+    validation = partitions["validation"]
+    validation_actual = validation["IsToxic"].astype(int).to_numpy()
+    validation_probability = model.predict_proba(validation["Text"].str.strip())[:, 1]
+    threshold = select_threshold(validation_actual, validation_probability)
+    validation_predictions, validation_metrics = evaluate(
+        model,
+        validation,
+        threshold=threshold,
+    )
     validation_predictions.to_csv(output / "validation_predictions.csv", index=False)
     report = {
-        "model": "tfidf-logistic-regression-v1",
-        "threshold": THRESHOLD,
-        "threshold_status": "reporting_default_not_tuned",
+        "model": "char-tfidf-logistic-regression-v2",
+        "threshold": threshold,
+        "threshold_status": "selected_on_validation_for_target_recall",
+        "target_recall": TARGET_RECALL,
         "pr_auc_definition": "average_precision",
         "train_rows": len(train),
         "validation_rows": len(partitions["validation"]),
         "test_rows": len(partitions["test"]),
         "excluded_unknown_video_rows": (
-            len(extract_dataset(dataset_path)) - sum(map(len, partitions.values()))
+            len(_read_dataset(dataset_path)) - sum(map(len, partitions.values()))
         ),
         "validation": validation_metrics,
     }
     if final_test:
-        test_predictions, test_metrics = evaluate(model, partitions["test"])
+        test_predictions, test_metrics = evaluate(
+            model,
+            partitions["test"],
+            threshold=threshold,
+        )
         test_predictions.to_csv(output / "test_predictions.csv", index=False)
         report["test"] = test_metrics
     else:
