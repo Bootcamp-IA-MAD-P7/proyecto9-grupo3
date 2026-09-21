@@ -20,6 +20,7 @@ from src.moderation.models.logistic_tfidf import (
     run_training,
     select_threshold,
 )
+from tests.frozen_config import create_frozen_ensemble_config
 
 
 class LogisticTfidfTests(unittest.TestCase):
@@ -83,6 +84,9 @@ class LogisticTfidfTests(unittest.TestCase):
             [row for row in rows if row[4] is not None],
             columns=["CommentId", "VideoId", "Text", "IsToxic", "split"],
         )[["CommentId", "VideoId", "split"]].to_csv(self.manifest_path, index=False)
+        self.ensemble_config = create_frozen_ensemble_config(
+            self.root, self.manifest_path
+        )
 
     def test_training_uses_only_train_text_and_holds_back_test(self):
         run_training(self.dataset_path, self.manifest_path, self.output_dir)
@@ -126,7 +130,13 @@ class LogisticTfidfTests(unittest.TestCase):
         )
 
     def test_final_evaluation_exports_test_by_comment_id(self):
-        run_training(self.dataset_path, self.manifest_path, self.output_dir, final_test=True)
+        run_training(
+            self.dataset_path,
+            self.manifest_path,
+            self.output_dir,
+            final_test=True,
+            ensemble_config=self.ensemble_config,
+        )
 
         predictions = pd.read_csv(self.output_dir / "test_predictions.csv")
         self.assertEqual(predictions["CommentId"].tolist(), ["e1", "e2"])
@@ -231,7 +241,13 @@ class LogisticTfidfTests(unittest.TestCase):
         self.assertEqual(metrics["brier_score"], 0.3125)
 
     def test_validation_run_removes_stale_final_test_exports(self):
-        run_training(self.dataset_path, self.manifest_path, self.output_dir, final_test=True)
+        run_training(
+            self.dataset_path,
+            self.manifest_path,
+            self.output_dir,
+            final_test=True,
+            ensemble_config=self.ensemble_config,
+        )
         report = run_training(self.dataset_path, self.manifest_path, self.output_dir)
         self.assertNotIn("test", report)
         self.assertFalse((self.output_dir / "test_predictions.csv").exists())

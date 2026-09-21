@@ -28,7 +28,7 @@ comentarios que requieren atención, sin delegar la decisión final en el modelo
 | Persistencia del backend | ✅ | SQLite guarda usuarios y comentarios; [guía del paso 2](docs/backend/02-base-de-datos.md) |
 | Autenticación y permisos | ✅ | Login, sesiones SQLite, hashes Argon2id y guard de roles; [guía del paso 3](docs/backend/03-autenticacion-y-permisos.md) |
 | Carga y cola priorizada | ✅ | Lotes validados, puntuación simulada y cola paginada sin texto; [guía del paso 4](docs/backend/04-carga-y-cola-priorizada.md) |
-| Modelos candidatos | 🟡 | Regresión logística, SVM lineal y transformer ligero implementados sobre el split común; [guía clásica](docs/model/logistic-tfidf.md) y [guía transformer](docs/model/transformer.md). Pendiente fijar el ensemble y ejecutar una única evaluación final |
+| Modelos y ensemble | 🟡 | Regresión logística, SVM y transformer evaluados sobre validación; ensemble ponderado congelado en [su guía](docs/model/ensemble.md). Pendiente ejecutar una única evaluación final de test |
 | Vertical funcional y demo | ⏳ | Pendiente de implementación |
 | Arquitectura y despliegue AWS | ⏳ | Se decidirán con las necesidades del vertical |
 

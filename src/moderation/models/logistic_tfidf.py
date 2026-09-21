@@ -200,8 +200,14 @@ def run_training(
     output_dir: str | Path,
     *,
     final_test: bool = False,
+    ensemble_config: str | Path | None = None,
 ) -> dict:
     """Fit on train; export validation and optionally the untouched final test."""
+    if final_test:
+        if ensemble_config is None:
+            raise ValueError("final_test requires a frozen ensemble_config")
+        from src.moderation.models.final_test_gate import verify_committed_config
+        verify_committed_config(ensemble_config, manifest_path)
     partitions = load_partitions(dataset_path, manifest_path)
     train = partitions["train"]
     if train["IsToxic"].nunique() != 2:

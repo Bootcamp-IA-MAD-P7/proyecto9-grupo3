@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "weights": {
+    "logistic": 0.1,
+    "svm": 0.0,
+    "transformer": 0.9
+  },
+  "threshold": 0.4128293385570654,
+  "target_recall": 0.8,
+  "validation_metrics": {
+    "precision": 0.7674418604651163,
+    "recall": 0.8048780487804879,
+    "f1": 0.7857142857142857,
+    "confusion_matrix": [
+      [
+        66,
+        30
+      ],
+      [
+        24,
+        99
+      ]
+    ],
+    "pr_auc": 0.8821985334918516,
+    "brier_score": 0.17818850286935506
+  },
+  "source_sha256": {
+    "manifest": "0b2b01364d072382419d4331efe23cea1aedb75f0f9700d9294777eb915e287b",
+    "logistic": "7ad6970b6cceda533b9872af0a86f788181477a4f8bdb8baa84e5ec3992f72f2",
+    "svm": "ac167a5408dd67222ee17d90cbb849896b07271e67989ed053837c5fc93a719e",
+    "transformer": "06e5e5ea0a859252860644fa9e78b9c0fcbe14f67dc01dba6260dfe27c151b93"
+  }
+}

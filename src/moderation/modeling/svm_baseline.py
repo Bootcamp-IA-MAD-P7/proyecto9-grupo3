@@ -89,8 +89,14 @@ def run_baseline(
     output_path: str | Path,
     *,
     final_test: bool = False,
+    ensemble_config: str | Path | None = None,
 ) -> dict[str, object]:
     """Run train-only fitting and open the test split only when explicitly requested."""
+    if final_test:
+        if ensemble_config is None:
+            raise ValueError("final_test requires a frozen ensemble_config")
+        from src.moderation.models.final_test_gate import verify_committed_config
+        verify_committed_config(ensemble_config, split_path)
     from src.moderation.data.extract import extract_dataset
 
     output_path = Path(output_path)
