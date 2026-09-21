@@ -70,3 +70,22 @@ aplica los pesos y el umbral sin recalcularlos. Un sello exclusivo y escrituras
 atómicas impiden repetir o sobrescribir una evaluación final existente.
 Los resultados de test sirven solo para informar desempeño final, nunca para
 cambiar pesos, umbral o modelos.
+
+## Resultado final de test
+
+La evaluación única se ejecutó con la configuración comprometida en `9eaf8eb`,
+sin recalibrar umbrales ni pesos. Los 185 comentarios de test produjeron:
+
+| Modelo | Precision | Recall | F1 | PR-AUC | Brier |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Regresión logística | 0,5704 | 0,8750 | 0,6906 | 0,7146 | 0,2086 |
+| SVM calibrado | 0,5119 | 0,9773 | 0,6719 | 0,6417 | 0,2265 |
+| DistilBERT | 0,6514 | 0,8068 | 0,7208 | **0,8343** | 0,2059 |
+| Ensemble 0,1 / 0 / 0,9 | **0,6514** | 0,8068 | **0,7208** | 0,8222 | **0,1963** |
+
+La matriz de confusión del ensemble es `[[59, 38], [17, 71]]`, idéntica a la
+de DistilBERT con los umbrales congelados. El ensemble mejora el Brier score en
+0,0096, pero reduce PR-AUC en 0,0120 y no cambia las decisiones binarias. Por
+ello demuestra una mejora de calibración pequeña, no una mejora general sobre
+DistilBERT; el transformer sigue siendo el mejor modelo individual y la opción
+más simple si se prioriza ranking.
