@@ -194,7 +194,8 @@ def test_export_results_rejects_null_or_duplicate_comment_ids(tmp_path):
         export_results(results, tmp_path / "results.csv")
 
 
-def test_run_baseline_end_to_end_uses_validation_threshold_and_exports_test_only(tmp_path):
+@pytest.mark.parametrize("final_test", [False, True])
+def test_run_baseline_gates_test_evaluation_and_export(tmp_path, final_test):
     rows = []
     split_rows = []
     for index in range(10):
@@ -256,19 +257,18 @@ def test_run_baseline_end_to_end_uses_validation_threshold_and_exports_test_only
     pd.DataFrame(rows).to_csv(dataset_path, index=False)
     pd.DataFrame(split_rows).to_csv(split_path, index=False)
 
-    result = run_baseline(dataset_path, split_path, output_path)
+    result = run_baseline(dataset_path, split_path, output_path, final_test=final_test)
 
-    assert set(result) == {
+    expected_keys = {
         "threshold",
         "validation",
         "validation_metrics",
         "validation_output_path",
-        "test",
-        "test_metrics",
-        "test_output_path",
     }
+    if final_test:
+        expected_keys.update({"test", "test_metrics", "test_output_path"})
+    assert set(result) == expected_keys
     assert set(result["validation"]["split"]) == {"validation"}
-    assert set(result["test"]["split"]) == {"test"}
     assert isinstance(result["threshold"], float)
     assert (
         result["validation"]["prediction"]
@@ -276,14 +276,31 @@ def test_run_baseline_end_to_end_uses_validation_threshold_and_exports_test_only
     ).all()
     assert result["validation_metrics"] == summarize_metrics(result["validation"])
     assert "f1" in result["validation_metrics"]
-    assert "pr_auc" in result["test_metrics"]
     validation_output = tmp_path / "results" / "svm_tfidf_validation_results.csv"
     test_output = tmp_path / "results" / "svm_tfidf_test_results.csv"
     assert result["validation_output_path"] == validation_output
-    assert result["test_output_path"] == test_output
     assert pd.read_csv(validation_output).columns.tolist() == RESULT_COLUMNS
-    assert pd.read_csv(test_output).columns.tolist() == RESULT_COLUMNS
     assert pd.read_csv(validation_output)["split"].tolist() == ["validation", "validation"]
-    assert pd.read_csv(test_output)["split"].tolist() == ["test", "test"]
     assert pd.read_csv(validation_output)["CommentId"].is_unique
-    assert pd.read_csv(test_output)["CommentId"].is_unique
+    if final_test:
+        assert set(result["test"]["split"]) == {"test"}
+        assert "pr_auc" in result["test_metrics"]
+        assert result["test_output_path"] == test_output
+        assert pd.read_csv(test_output).columns.tolist() == RESULT_COLUMNS
+        assert pd.read_csv(test_output)["split"].tolist() == ["test", "test"]
+        assert pd.read_csv(test_output)["CommentId"].is_unique
+    else:
+        assert not test_output.exists()
+
+
+def test_default_svm_run_rejects_stale_test_predictions(tmp_path):
+    output_path = tmp_path / "results"
+    output_path.mkdir()
+    (output_path / "svm_tfidf_test_results.csv").write_text("sensitive", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="stale svm_tfidf_test_results"):
+        run_baseline(
+            tmp_path / "missing-dataset.csv",
+            tmp_path / "missing-split.csv",
+            output_path,
+        )
