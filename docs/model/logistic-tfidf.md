@@ -62,7 +62,7 @@ Cuando el equipo haya aceptado la configuración y la regla de recall, ejecutar
 una sola evaluación final:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/train_logistic_tfidf.py --dataset data/raw/youtoxic_english_1000.csv --final-test
+.\.venv\Scripts\python.exe scripts/train_logistic_tfidf.py --dataset data/raw/youtoxic_english_1000.csv --final-test --ensemble-config configs/ensemble.json
 ```
 
 Esto añade `test_predictions.csv` y las métricas de test a `metrics.json`. El

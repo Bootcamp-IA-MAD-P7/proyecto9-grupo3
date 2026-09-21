@@ -26,7 +26,8 @@ versiones del runtime. Los artefactos locales se guardan en
 - `validation_predictions.csv`: probabilidades alineadas por `CommentId`.
 - `metrics.json`: configuración, pérdidas, umbral y métricas.
 
-Solo después de fijar el ensemble debe utilizarse `--final-test`. El test no se
+Solo después de fijar y versionar el ensemble debe utilizarse
+`--final-test --ensemble-config configs/ensemble.json`. El test no se
 usa para escoger épocas, umbrales ni pesos.
 
 ## Comparación de los tres modelos

@@ -12,6 +12,7 @@ from src.moderation.modeling.svm_baseline import (
     run_baseline,
     summarize_metrics,
 )
+from tests.frozen_config import create_frozen_ensemble_config
 
 
 def synthetic_dataset() -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -257,7 +258,16 @@ def test_run_baseline_gates_test_evaluation_and_export(tmp_path, final_test):
     pd.DataFrame(rows).to_csv(dataset_path, index=False)
     pd.DataFrame(split_rows).to_csv(split_path, index=False)
 
-    result = run_baseline(dataset_path, split_path, output_path, final_test=final_test)
+    ensemble_config = (
+        create_frozen_ensemble_config(tmp_path, split_path) if final_test else None
+    )
+    result = run_baseline(
+        dataset_path,
+        split_path,
+        output_path,
+        final_test=final_test,
+        ensemble_config=ensemble_config,
+    )
 
     expected_keys = {
         "threshold",

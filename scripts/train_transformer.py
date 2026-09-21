@@ -7,6 +7,10 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.moderation.models.transformer import DEFAULT_MODEL_REVISION, run_transformer
+from src.moderation.models.final_test_gate import (
+    verify_committed_config,
+    write_prediction_metadata,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,11 +38,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=2e-5)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--final-test", action="store_true")
-    return parser.parse_args()
+    parser.add_argument("--ensemble-config", type=Path)
+    arguments = parser.parse_args()
+    if arguments.final_test and arguments.ensemble_config is None:
+        parser.error("--final-test requires --ensemble-config")
+    return arguments
 
 
 if __name__ == "__main__":
     arguments = parse_args()
+    if arguments.final_test:
+        config_sha256 = verify_committed_config(arguments.ensemble_config, arguments.split)
     report = run_transformer(
         arguments.dataset,
         arguments.split,
@@ -51,7 +61,22 @@ if __name__ == "__main__":
         learning_rate=arguments.learning_rate,
         seed=arguments.seed,
         final_test=arguments.final_test,
+        ensemble_config=arguments.ensemble_config,
     )
+    write_prediction_metadata(
+        arguments.output / "validation_predictions.csv",
+        model_name="transformer",
+        split="validation",
+        manifest_path=arguments.split,
+    )
+    if arguments.final_test:
+        write_prediction_metadata(
+            arguments.output / "test_predictions.csv",
+            model_name="transformer",
+            split="test",
+            manifest_path=arguments.split,
+            config_sha256=config_sha256,
+        )
     print(f"Validation metrics: {report['validation']}")
     print(f"Selected threshold: {report['threshold']:.6f}")
     if "test" not in report:

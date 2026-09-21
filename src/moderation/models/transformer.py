@@ -169,8 +169,14 @@ def run_transformer(
     seed: int = 42,
     target_recall: float = 0.8,
     final_test: bool = False,
+    ensemble_config: str | Path | None = None,
 ) -> dict[str, object]:
     """Train on the common train split and evaluate without opening test by default."""
+    if final_test:
+        if ensemble_config is None:
+            raise ValueError("final_test requires a frozen ensemble_config")
+        from src.moderation.models.final_test_gate import verify_committed_config
+        verify_committed_config(ensemble_config, split_path)
     _set_seed(seed)
     output = Path(output_path)
     output.mkdir(parents=True, exist_ok=True)
