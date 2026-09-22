@@ -8,6 +8,12 @@ moderador o supervisor puede consultar una cola paginada. La cola nunca devuelve
 el texto: la lectura del contenido para revisión humana llegará en el paso de
 revisión, con permisos y trazabilidad propios.
 
+Este scorer es deliberadamente provisional: `SimulatedScorer` produce valores
+deterministas para el demo, pero no mide toxicidad ni sustituye un modelo
+entrenado. La API no usa todavía el dataset local ni un artefacto de
+DistilBERT. El dataset de entrenamiento, cuando esté disponible, permanece
+fuera de Git y debe pasarse explícitamente al script del modelo.
+
 ```mermaid
 flowchart LR
     A[Supervisor: JSON] --> B[Validación]

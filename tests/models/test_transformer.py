@@ -3,6 +3,7 @@ import pytest
 import torch
 from types import SimpleNamespace
 
+from src.moderation.models import transformer as transformer_module
 from src.moderation.models.transformer import (
     ToxicityDataset,
     _set_seed,
@@ -162,6 +163,45 @@ def test_training_and_prediction_use_real_torch_batches():
     assert ((probabilities >= 0) & (probabilities <= 1)).all()
 
 
+def test_training_uses_weight_decay_early_stopping_and_best_validation_state(monkeypatch):
+    torch.manual_seed(42)
+    model = TinyClassifier()
+    dataset = TensorDataset()
+    snapshots = []
+    optimizer_options = {}
+
+    real_adamw = torch.optim.AdamW
+
+    def recording_adamw(parameters, **kwargs):
+        optimizer_options.update(kwargs)
+        return real_adamw(parameters, **kwargs)
+
+    def fake_validation(model, dataset, **kwargs):
+        snapshots.append({name: value.detach().clone() for name, value in model.state_dict().items()})
+        return torch.tensor([0.1, 0.9] if len(snapshots) == 1 else [0.9, 0.9]).numpy()
+
+    monkeypatch.setattr(transformer_module, "AdamW", recording_adamw)
+    monkeypatch.setattr(transformer_module, "predict_probabilities", fake_validation)
+
+    history = train_model(
+        model,
+        dataset,
+        epochs=5,
+        batch_size=2,
+        learning_rate=0.1,
+        device=torch.device("cpu"),
+        validation_dataset=dataset,
+        early_stopping_patience=1,
+        weight_decay=0.07,
+    )
+
+    assert train_model.__kwdefaults__["weight_decay"] == pytest.approx(0.01)
+    assert optimizer_options["weight_decay"] == pytest.approx(0.07)
+    assert len(history) == 2
+    assert len(snapshots) == 2
+    assert all(torch.equal(model.state_dict()[name], snapshots[0][name]) for name in snapshots[0])
+
+
 def test_run_transformer_keeps_test_sealed_by_default(tmp_path, monkeypatch):
     rows = []
     split_rows = []
@@ -207,16 +247,32 @@ def test_run_transformer_keeps_test_sealed_by_default(tmp_path, monkeypatch):
     monkeypatch.setattr("src.moderation.models.transformer.ToxicityDataset", lambda frame, tokenizer, max_length: frame)
     monkeypatch.setattr("src.moderation.models.transformer.train_model", lambda *args, **kwargs: [0.5])
 
+    prediction_calls = []
+
     def validation_only(model, dataset, **kwargs):
-        if len(dataset) != 2:
-            raise AssertionError("test split was evaluated")
-        return torch.tensor([0.2, 0.8]).numpy()
+        prediction_calls.append(len(dataset))
+        if len(dataset) == 4:
+            return torch.tensor([0.1, 0.2, 0.8, 0.9]).numpy()
+        if len(dataset) == 2:
+            return torch.tensor([0.2, 0.8]).numpy()
+        raise AssertionError("test split was evaluated")
 
     monkeypatch.setattr("src.moderation.models.transformer.predict_probabilities", validation_only)
 
     report = run_transformer(dataset_path, split_path, output_path, epochs=1)
 
+    assert set(report) >= {"train", "validation", "threshold"}
+    assert set(report["train"]) == {
+        "precision",
+        "recall",
+        "f1",
+        "confusion_matrix",
+        "pr_auc",
+        "brier_score",
+    }
     assert report["validation"]["recall"] == 1.0
+    assert report["threshold"] == pytest.approx(0.8)
+    assert prediction_calls == [2, 4]
     assert report["model_revision"] == "12040accade4e8a0f71eabdb258fecc2e7e948be"
     assert set(report["runtime_versions"]) == {
         "python",
