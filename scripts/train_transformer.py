@@ -47,6 +47,12 @@ def parse_args() -> argparse.Namespace:
 
 if __name__ == "__main__":
     arguments = parse_args()
+    if not arguments.dataset.is_file():
+        raise SystemExit(
+            f"Dataset not found: {arguments.dataset}\n"
+            "Provide a local CSV with --dataset PATH. The expected default is "
+            "data/raw/youtoxic_english_1000.csv."
+        )
     if arguments.final_test:
         config_sha256 = verify_committed_config(arguments.ensemble_config, arguments.split)
     report = run_transformer(

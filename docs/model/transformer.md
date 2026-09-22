@@ -4,6 +4,12 @@ El tercer modelo utiliza `distilbert-base-uncased` para estimar `IsToxic`. Solo
 recibe `Text`; `CommentId` alinea las salidas y `VideoId` valida el split. Las
 etiquetas secundarias nunca se tokenizan ni entran al modelo.
 
+El CSV esperado es `data/raw/youtoxic_english_1000.csv`. Es un insumo local y no
+se versiona ni se descarga desde este repositorio. Si se dispone de una copia
+autorizada en otra ubicación, se puede pasar con `--dataset RUTA_LOCAL.csv`.
+No se deben usar datasets de ejemplo de scikit-learn ni generar métricas sin
+ejecutar el pipeline con el dataset del proyecto.
+
 ## Entrenamiento
 
 El proceso reutiliza `data/splits/common_split.csv`, ajusta todos los pesos con
@@ -15,6 +21,12 @@ el umbral más alto que alcanza al menos 80 % de recall. Por defecto no abre las
 .\.venv\Scripts\python.exe -m pip install -e '.[dev,model,transformer]'
 .\.venv\Scripts\python.exe scripts/train_transformer.py
 ```
+
+Si falta el CSV por defecto, el comando informa de la ruta exacta y recuerda
+cómo indicar una ruta alternativa con `--dataset`; no crea resultados ficticios.
+Hasta conectar un artefacto entrenado y validado, la API sigue usando
+`SimulatedScorer` para el demo. Sus puntuaciones solo prueban el contrato de la
+cola y no representan toxicidad.
 
 La configuración reproducible usa semilla 42, longitud máxima 128, tres épocas,
 lotes de 16, tasa de aprendizaje `2e-5` y la revisión de DistilBERT

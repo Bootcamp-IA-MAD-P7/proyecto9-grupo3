@@ -67,6 +67,51 @@ recorre login, autorización en Swagger y logout.
 La [guía de carga y cola](docs/backend/04-carga-y-cola-priorizada.md) muestra
 cómo importar comentarios sintéticos y recorrer páginas sin exponer su texto.
 
+## Demo local de la API
+
+La API actual funciona sin dataset ni modelo entrenado: usa `SimulatedScorer`,
+un scorer determinista para demostrar importación, permisos y orden de la cola.
+Sus puntuaciones no son probabilidades de toxicidad y no deben usarse para
+decisiones reales de moderación.
+
+Desde otra terminal, prepara usuarios con contraseñas locales elegidas por ti,
+inicia la API y abre Swagger:
+
+```powershell
+.\.venv\Scripts\python.exe -m app.seed_demo_users
+.\.venv\Scripts\python.exe -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000
+```
+
+En <http://127.0.0.1:8000/docs>:
+
+1. Comprueba `GET /health`.
+2. Ejecuta `POST /auth/login` como `supervisor` y usa el `access_token` en
+   **Authorize**.
+3. Importa dos comentarios sintéticos con `POST /comments/import`.
+4. Consulta `GET /comments` como `supervisor` y como `moderator`; la respuesta
+   muestra la cola priorizada sin devolver `text`.
+5. Comprueba que `moderator` puede consultar la cola pero recibe `403` al
+   importar, mientras que `supervisor` recibe `201`.
+
+La base SQLite del demo se guarda en `data/local/` y está excluida de Git.
+No uses comentarios reales, credenciales compartidas ni datos privados.
+
+## Dataset y entrenamiento del Transformer
+
+El entrenamiento espera el CSV local `data/raw/youtoxic_english_1000.csv`. Ese
+archivo no se versiona ni se descarga automáticamente. Si está autorizado y
+disponible en otra ruta, indícala explícitamente:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/train_transformer.py --dataset RUTA_LOCAL.csv
+```
+
+Sin ese archivo, el comando termina con un mensaje claro y no genera métricas.
+No sustituyas el dataset del proyecto por datasets de ejemplo de scikit-learn.
+La guía completa del modelo está en [docs/model/transformer.md](docs/model/transformer.md);
+el test permanece cerrado salvo que se use `--final-test` con la configuración
+congelada requerida.
+
 ## El problema
 
 Revisar comentarios en orden de llegada puede hacer que contenido potencialmente
