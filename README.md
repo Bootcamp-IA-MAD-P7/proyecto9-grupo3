@@ -153,8 +153,8 @@ como modelo productivo principal en la demo. No se continuará con Optuna por
 falta de tiempo y porque primero hay que resolver el sobreajuste.
 
 El dataset y todos los artefactos de `data/local/` no se versionan. El siguiente
-El siguiente experimento deberá probar otra estrategia explicable y comparar
-train y validation; no se abrirá test hasta una evaluación final autorizada.
+experimento deberá probar otra estrategia explicable y comparar train y validation;
+no se abrirá test hasta una evaluación final autorizada.
 
 ## El problema
 
