@@ -51,11 +51,11 @@ flowchart TD
     D --> E[Revisión humana]
     E --> F[Decisión de moderación]
 
-    C -. "Demo actual" .-> G[SimulatedScorer]
-    C -. "Siguiente integración" .-> H[Logistic + TF-IDF]
-````
+    C --> G[Logistic + TF-IDF]
+    C -. "Fallback local" .-> H[SimulatedScorer]
+```
 
-> La demo actual utiliza `SimulatedScorer`. El modelo seleccionado todavía no está conectado a la API.
+> La API usa Logistic + TF-IDF cuando encuentra el artefacto validado. `SimulatedScorer` solo se conserva como fallback local cuando falta el artefacto y no representa toxicidad real.
 
 ## Estado del proyecto
 
@@ -69,7 +69,7 @@ flowchart TD
 | Demo HTTP local                     | Verificada    | [Guía de carga y cola](docs/backend/04-carga-y-cola-priorizada.md) |
 | Evaluación de modelos               | Implementada  | [Guía del ensemble](docs/model/ensemble.md)                        |
 | Modelo clásico candidato            | Seleccionado  | Logistic Regression + TF-IDF                                       |
-| Inferencia real en la API           | Pendiente     | Requiere artefacto y scorer reproducibles                          |
+| Inferencia real en la API           | Implementada  | `LogisticScorer`, versión `logistic-tfidf-v1`                      |
 | Despliegue                          | Pendiente     | Posterior al vertical local completo                               |
 
 ## Demo funcional de la API
@@ -87,9 +87,9 @@ La API local está verificada con comentarios sintéticos.
 | Importación como `moderator`      | `403`                        |
 | Repetición del lote               | `409`                        |
 | Texto expuesto en la cola         | No                           |
-| Orden observado                   | `demo-b`, `demo-a`, `demo-c` |
+| `score_source` / `model_version` | `MODEL` / `logistic-tfidf-v1` |
 
-El orden actual proviene de `SimulatedScorer`: es determinista y permite verificar el contrato técnico de la API, pero **no representa una probabilidad real de toxicidad**.
+El orden de la demo proviene de la probabilidad del pipeline Logistic + TF-IDF. `risk_score` es una señal para priorizar revisión humana, no una decisión automática ni una certeza de toxicidad.
 
 ## Ejecutar la API local
 
@@ -124,21 +124,21 @@ La mejor combinación fue `75/25`, con F1 `0,7226` y Brier `0,2208`. No mejoró 
 
 Se selecciona **Logistic Regression + TF-IDF** como candidato inicial para la inferencia productiva porque fue la mejor alternativa clásica evaluada y mantiene una complejidad operativa menor.
 
-Esta decisión no significa que el modelo ya esté conectado a la API.
+La API ya conecta el artefacto validado mediante `LogisticScorer`; si el artefacto
+no está disponible, el fallback simulado solo se permite en demos/tests locales.
 
-La implementación actual del ensemble combina probabilidades precalculadas y todavía no ofrece una interfaz de inferencia para textos nuevos:
+La inferencia productiva expone una interfaz de texto nuevo:
 
 ```python
 score_comment(text: str) -> Score
 ```
 
-El siguiente paso técnico es:
+El artefacto se carga una sola vez y contiene:
 
-1. Empaquetar el vectorizador y el clasificador Logistic.
-2. Crear un scorer reproducible que cargue el artefacto sin reentrenar.
-3. Añadir pruebas de carga e inferencia.
-4. Integrar el scorer real en la API.
-5. Repetir la demo HTTP con `score_source="MODEL"`.
+1. El vectorizador y el clasificador Logistic empaquetados.
+2. Preprocesamiento reproducible y metadatos con hash.
+3. Threshold seleccionado únicamente con validation; test cerrado.
+4. `uncertainty` calculada como cercanía de la probabilidad a 0,5.
 
 ## Limitaciones del Transformer
 
@@ -201,5 +201,4 @@ Proyecto desarrollado por **Fernanda**, **Gabriela** y **Arnaldo** durante el bo
 
 El objetivo no es únicamente obtener una métrica alta: buscamos entender el problema, evaluar alternativas, medir resultados, reconocer limitaciones y construir una solución que mantenga las decisiones de moderación bajo control humano.
 
-```
 ```

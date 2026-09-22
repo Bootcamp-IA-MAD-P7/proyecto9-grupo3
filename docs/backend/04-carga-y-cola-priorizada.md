@@ -142,3 +142,12 @@ del JSON y observa que el desempate conserva ese orden. Las pruebas ejecutables:
 ```powershell
 .\.venv\Scripts\python.exe -m pytest backend/tests/test_comments.py -q
 ```
+## Estado de la inferencia
+
+La API carga el artefacto Logistic + TF-IDF generado por
+`scripts/train_logistic_tfidf.py` sin reentrenar. Las filas conectadas contienen
+`score_source: MODEL` y `model_version: logistic-tfidf-v1`. `risk_score` sirve para
+priorizar revisión humana y `uncertainty` expresa ambigüedad del score; ninguno
+es una decisión automática. El Transformer permanece fuera de producción.
+`SimulatedScorer` solo se usa como fallback local cuando falta el artefacto y sus
+valores no representan toxicidad real.
