@@ -10,7 +10,7 @@ from app.auth.router import router as auth_router
 from app.auth.service import AuthService
 from app.comments.repository import CommentRepository
 from app.comments.router import router as comments_router
-from app.comments.scoring import SimulatedScorer
+from app.comments.scoring import select_scorer
 from app.comments.service import CommentService
 from app.config import Settings
 from app.database import Database
@@ -38,7 +38,7 @@ def create_app() -> FastAPI:
     )
     app.state.database = database
     app.state.auth_service = AuthService(AuthRepository(database), settings)
-    app.state.comment_service = CommentService(CommentRepository(database), SimulatedScorer())
+    app.state.comment_service = CommentService(CommentRepository(database), select_scorer(settings))
     app.add_exception_handler(RequestValidationError, validation_error)
 
     @app.middleware("http")
