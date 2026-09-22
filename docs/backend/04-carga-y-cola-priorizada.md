@@ -75,6 +75,21 @@ La base local está en `data/local/moderation.db` por defecto y se excluye de Gi
 No cargues comentarios reales ni un dataset sin resolver antes procedencia,
 licencia y protección de datos.
 
+### Resultado verificado
+
+El flujo HTTP se comprobó localmente el 22 de septiembre de 2026 con tres
+comentarios sintéticos y una SQLite temporal: `/health` respondió `200`, el
+login de supervisor `200`, la importación `201`, la cola paginada respondió
+`200` con páginas de 2 y 1 elementos, y el login de moderator respondió `200`.
+Moderator pudo leer la cola (`200`) pero no importar (`403`); repetir el lote
+devolvió `409` por comentario duplicado. El orden observado fue `demo-b`,
+`demo-a`, `demo-c`; depende del scorer simulado y no representa toxicidad.
+
+Esta verificación no conecta DistilBERT ni ningún otro modelo entrenado. La API
+mantiene `SimulatedScorer` hasta que exista un adaptador de modelo aprobado; las
+limitaciones y el overfitting del Transformer están documentados en
+`docs/model/transformer.md`.
+
 ## Cómo funciona la validación
 
 Cada lote admite de 1 a 1000 comentarios. `comment_id` y `video_id` tienen

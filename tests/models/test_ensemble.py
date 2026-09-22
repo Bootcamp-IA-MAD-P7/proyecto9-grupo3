@@ -7,8 +7,10 @@ import pytest
 from src.moderation.models.ensemble import (
     build_ensemble_predictions,
     evaluate_frozen_ensemble_from_files,
+    fit_classical_ensemble,
     fit_ensemble,
     fit_ensemble_from_files,
+    validate_classical_weights,
     validate_weights,
 )
 from src.moderation.models.final_test_gate import write_prediction_metadata
@@ -80,6 +82,52 @@ def test_fit_ensemble_selects_threshold_only_from_combined_validation_probabilit
         [0.28, 0.98, 0.88, 0.38]
     )
 
+
+@pytest.mark.parametrize("logistic_weight", [1.0, 0.75, 0.5, 0.25, 0.0])
+def test_classical_ensemble_uses_only_logistic_and_svm_with_validation_threshold(
+    logistic_weight,
+):
+    result = fit_classical_ensemble(
+        component_frame([0.1, 0.8, 0.7, 0.2]),
+        component_frame([0.2, 0.7, 0.6, 0.1], reverse=True),
+        logistic_weight=logistic_weight,
+        svm_weight=1 - logistic_weight,
+    )
+
+    assert result["weights"] == {
+        "logistic": logistic_weight,
+        "svm": 1 - logistic_weight,
+    }
+    assert 0 <= result["threshold"] <= 1
+    assert result["predictions"]["probability"].between(0, 1).all()
+    assert "probability_transformer" not in result["predictions"]
+
+
+def test_classical_comparison_is_reproducible_and_rejects_invalid_weights_or_probabilities():
+    kwargs = {
+        "logistic_weight": 0.5,
+        "svm_weight": 0.5,
+    }
+    first = fit_classical_ensemble(
+        component_frame([0.1, 0.8, 0.7, 0.2]),
+        component_frame([0.2, 0.7, 0.6, 0.1]),
+        **kwargs,
+    )
+    second = fit_classical_ensemble(
+        component_frame([0.1, 0.8, 0.7, 0.2]),
+        component_frame([0.2, 0.7, 0.6, 0.1]),
+        **kwargs,
+    )
+    assert first["threshold"] == second["threshold"]
+    assert first["metrics"] == second["metrics"]
+    with pytest.raises(ValueError, match="sum to one"):
+        validate_classical_weights(0.6, 0.6)
+    with pytest.raises(ValueError, match="between zero and one"):
+        fit_classical_ensemble(
+            component_frame([-0.1, 0.8, 0.7, 0.2]),
+            component_frame([0.2, 0.7, 0.6, 0.1]),
+            **kwargs,
+        )
 
 def write_component_files(tmp_path, prefix, comment_ids, labels, probabilities):
     paths = {}

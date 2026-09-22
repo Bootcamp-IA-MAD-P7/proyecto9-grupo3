@@ -35,6 +35,49 @@ ensemble mejora PR-AUC en aproximadamente 0,0007 y Brier score en 0,0077, pero
 produce una falsa alarma adicional. La mejora de ranking es pequeña; DistilBERT
 se conserva como control de referencia.
 
+## Estado de la auditoría de inferencia
+
+La implementación actual combina `DataFrame` de probabilidades ya calculadas.
+`scripts/run_ensemble.py` recibe tres archivos de predicciones y no ofrece una
+función `score_comment(text: str) -> Score` ni carga modelos para textos nuevos.
+Por tanto, el ensemble todavía no está preparado para inferencia productiva.
+
+Los artefactos Logistic y SVM se pudieron regenerar localmente desde el dataset
+autorizado y el manifiesto común. La comparación fair de validation reproduce:
+
+| Modelo | F1 | PR-AUC | Brier |
+| --- | ---: | ---: | ---: |
+| Logistic Regression | 0,7306 | 0,7793 | 0,2166 |
+| SVM calibrado | 0,7122 | 0,7398 | 0,2475 |
+| Transformer | 0,7734 | 0,8767 | 0,2060 |
+
+### Evaluación Logistic + SVM
+
+Se evaluaron únicamente las 219 filas de validation, con threshold seleccionado
+de nuevo para cada combinación y objetivo de recall 0,8. No se utilizó test ni
+Transformer en esta comparación:
+
+| Peso Logistic / SVM | Threshold | Precision | Recall | F1 | PR-AUC | Brier |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 / 0 | 0,387494 | 0,6689 | 0,8049 | **0,7306** | 0,7793 | **0,2166** |
+| 75 / 25 | 0,349959 | 0,6556 | 0,8049 | 0,7226 | **0,7801** | 0,2208 |
+| 50 / 50 | 0,333481 | 0,6644 | 0,8049 | 0,7279 | 0,7663 | 0,2274 |
+| 25 / 75 | 0,306184 | 0,6513 | 0,8049 | 0,7200 | 0,7537 | 0,2363 |
+| 0 / 100 | 0,269477 | 0,6387 | 0,8049 | 0,7122 | 0,7398 | 0,2475 |
+
+La conclusión es **LOGISTIC INDIVIDUAL SELECCIONADO**. Ninguna combinación
+mejora F1 ni Brier frente a Logistic; la pequeña mejora de PR-AUC de 75/25 no
+compensa la peor calibración y el menor F1. La decisión está respaldada por
+esta comparación de validation, pero aún no constituye inferencia productiva.
+Los artefactos locales no se versionan.
+
+La configuración congelada sigue asignando `0,10` a Logistic, `0,00` a SVM y
+`0,90` a Transformer. No se han cambiado esos pesos: los hashes de los tres
+archivos locales no coinciden con `configs/ensemble.json`. Antes de conectar
+inferencia hay que congelar el artefacto Logistic compatible y crear una capa de
+carga reutilizable. El Transformer queda fuera del modelo productivo por su
+overfitting documentado.
+
 ## Congelar la configuración en validación
 
 ```powershell
