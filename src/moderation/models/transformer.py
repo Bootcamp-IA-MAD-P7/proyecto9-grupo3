@@ -223,6 +223,17 @@ def run_transformer(
     validation_metrics = summarize_predictions(validation_predictions)
     validation_predictions.to_csv(output / "validation_predictions.csv", index=False)
 
+    train_probability = predict_probabilities(
+        model,
+        train_dataset,
+        batch_size=batch_size,
+        device=device,
+    )
+    train_predictions = build_prediction_frame(
+        partitions["train"], train_probability, threshold=threshold
+    )
+    train_metrics = summarize_predictions(train_predictions)
+
     model_output = output / "model"
     model.save_pretrained(model_output)
     tokenizer.save_pretrained(model_output)
@@ -246,6 +257,7 @@ def run_transformer(
             "torch": version("torch"),
             "transformers": version("transformers"),
         },
+        "train": train_metrics,
         "validation": validation_metrics,
     }
     if final_test:

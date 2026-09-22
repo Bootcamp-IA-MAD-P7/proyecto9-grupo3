@@ -207,16 +207,32 @@ def test_run_transformer_keeps_test_sealed_by_default(tmp_path, monkeypatch):
     monkeypatch.setattr("src.moderation.models.transformer.ToxicityDataset", lambda frame, tokenizer, max_length: frame)
     monkeypatch.setattr("src.moderation.models.transformer.train_model", lambda *args, **kwargs: [0.5])
 
+    prediction_calls = []
+
     def validation_only(model, dataset, **kwargs):
-        if len(dataset) != 2:
-            raise AssertionError("test split was evaluated")
-        return torch.tensor([0.2, 0.8]).numpy()
+        prediction_calls.append(len(dataset))
+        if len(dataset) == 4:
+            return torch.tensor([0.1, 0.2, 0.8, 0.9]).numpy()
+        if len(dataset) == 2:
+            return torch.tensor([0.2, 0.8]).numpy()
+        raise AssertionError("test split was evaluated")
 
     monkeypatch.setattr("src.moderation.models.transformer.predict_probabilities", validation_only)
 
     report = run_transformer(dataset_path, split_path, output_path, epochs=1)
 
+    assert set(report) >= {"train", "validation", "threshold"}
+    assert set(report["train"]) == {
+        "precision",
+        "recall",
+        "f1",
+        "confusion_matrix",
+        "pr_auc",
+        "brier_score",
+    }
     assert report["validation"]["recall"] == 1.0
+    assert report["threshold"] == pytest.approx(0.8)
+    assert prediction_calls == [2, 4]
     assert report["model_revision"] == "12040accade4e8a0f71eabdb258fecc2e7e948be"
     assert set(report["runtime_versions"]) == {
         "python",
