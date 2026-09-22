@@ -27,6 +27,16 @@ MODEL_NAMES = ("logistic", "svm", "transformer")
 DEFAULT_WEIGHTS = {"logistic": 0.1, "svm": 0.0, "transformer": 0.9}
 
 
+def validate_classical_weights(logistic: float, svm: float) -> tuple[float, float]:
+    """Validate a two-model Logistic/SVM soft-voting distribution."""
+    values = (float(logistic), float(svm))
+    if any(not math.isfinite(value) or value < 0 for value in values):
+        raise ValueError("Classical ensemble weights must be finite and non-negative")
+    if not math.isclose(sum(values), 1.0, rel_tol=0.0, abs_tol=1e-9):
+        raise ValueError("Classical ensemble weights must sum to one")
+    return values
+
+
 def validate_weights(weights: Mapping[str, float]) -> dict[str, float]:
     """Require one finite non-negative weight per candidate model summing to one."""
     if set(weights) != set(MODEL_NAMES):
@@ -95,6 +105,50 @@ def fit_ensemble(
     predictions = build_ensemble_predictions(frames, weights=weights, threshold=threshold)
     return {
         "weights": validate_weights(weights),
+        "target_recall": target_recall,
+        "threshold": threshold,
+        "predictions": predictions,
+        "metrics": summarize_predictions(predictions),
+    }
+
+
+def fit_classical_ensemble(
+    logistic_frame: pd.DataFrame,
+    svm_frame: pd.DataFrame,
+    *,
+    logistic_weight: float,
+    svm_weight: float,
+    target_recall: float = 0.8,
+) -> dict[str, object]:
+    """Evaluate a Logistic/SVM combination with a validation-only threshold."""
+    logistic_weight, svm_weight = validate_classical_weights(
+        logistic_weight, svm_weight
+    )
+    logistic = _normalize(logistic_frame)
+    svm = _normalize(svm_frame)
+    for name, frame in (("logistic", logistic), ("svm", svm)):
+        probability = frame["probability"].astype(float).to_numpy()
+        if not np.isfinite(probability).all() or ((probability < 0) | (probability > 1)).any():
+            raise ValueError(f"{name} probabilities must be between zero and one")
+    if set(logistic["CommentId"]) != set(svm["CommentId"]):
+        raise ValueError("Classical predictions must contain identical CommentId values")
+    reference_ids = logistic["CommentId"].tolist()
+    svm = svm.set_index("CommentId").loc[reference_ids].reset_index()
+    if not svm["IsToxic"].equals(logistic["IsToxic"]):
+        raise ValueError("Classical predictions contain conflicting ground truth")
+    probabilities = (
+        logistic_weight * logistic["probability"].astype(float).to_numpy()
+        + svm_weight * svm["probability"].astype(float).to_numpy()
+    )
+    reference = logistic[["CommentId", "IsToxic"]]
+    threshold = select_threshold(
+        reference["IsToxic"].to_numpy(), probabilities, target_recall=target_recall
+    )
+    predictions = build_prediction_frame(reference, probabilities, threshold=threshold)
+    predictions["probability_logistic"] = logistic["probability"].to_numpy()
+    predictions["probability_svm"] = svm["probability"].to_numpy()
+    return {
+        "weights": {"logistic": logistic_weight, "svm": svm_weight},
         "target_recall": target_recall,
         "threshold": threshold,
         "predictions": predictions,

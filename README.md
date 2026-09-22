@@ -165,14 +165,18 @@ no se abrirá test hasta una evaluación final autorizada.
 
 ## Estado del ensemble productivo
 
-El ensemble clásico es el candidato productivo, pero todavía no está listo para
-inferir textos nuevos: el código actual combina archivos de probabilidades
-precalculadas y no expone una capa `score_comment(text) -> Score`. Los artefactos
-Logistic y SVM se pueden regenerar localmente, y Logistic es por ahora el mejor
-candidato clásico individual en validation; aún falta evaluar una combinación
-Logistic+SVM y congelar una configuración compatible. No se han cambiado los
-pesos actuales, que todavía dan predominio al Transformer. El Transformer queda
-fuera del modelo productivo por el overfitting documentado.
+El ensemble clásico se evaluó en validation con cinco pesos Logistic/SVM y una
+política común: seleccionar el umbral para alcanzar al menos 80 % de recall.
+Logistic individual fue la mejor opción clásica (F1 0,7306); ninguna combinación
+mejoró ese resultado. El mejor intento combinado fue 75/25 (F1 0,7226, Brier
+0,2208), por debajo de Logistic. La decisión actual es **LOGISTIC INDIVIDUAL
+SELECCIONADO** como candidato productivo, pendiente de implementar y verificar
+la inferencia para textos nuevos.
+
+El código actual combina archivos de probabilidades precalculadas y no expone
+una capa `score_comment(text) -> Score`. No se han cambiado los pesos de
+`configs/ensemble.json`, que todavía dan predominio al Transformer. El
+Transformer queda fuera del modelo productivo por el overfitting documentado.
 
 ## El problema
 
