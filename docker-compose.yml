@@ -1,0 +1,40 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      MODERATION_DATABASE_PATH: /app/data/local/moderation.db
+      MODERATION_CORS_ORIGINS: '["http://localhost:${FRONTEND_PORT:-5173}"]'
+      MODERATION_ALLOW_SIMULATED_FALLBACK: ${MODERATION_ALLOW_SIMULATED_FALLBACK:-true}
+      MODERATION_DOCS_ENABLED: ${MODERATION_DOCS_ENABLED:-true}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - moderation-data:/app/data/local
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  moderation-data:

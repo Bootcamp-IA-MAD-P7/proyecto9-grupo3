@@ -106,6 +106,72 @@ Abre http://127.0.0.1:8000/docs para probar la API desde Swagger.
 
 El comando de usuarios solicita contraseñas locales para `moderator` y `supervisor`. No uses credenciales compartidas ni las guardes en Git.
 
+## Ejecutar con Docker Compose
+
+Requisitos: Docker Desktop con Compose v2.
+
+Desde la raÃ­z del repositorio:
+
+```bash
+docker compose up --build
+```
+
+La aplicaciÃ³n queda disponible en:
+
+- Frontend: http://localhost:5173
+- Swagger: http://localhost:8000/docs
+
+La base SQLite se conserva en el volumen Docker `moderation-data`. El frontend se construye con `VITE_API_URL=http://localhost:8000` y el backend permite CORS desde `http://localhost:5173`. Los puertos y la URL se pueden configurar sin editar los Dockerfiles:
+
+```bash
+BACKEND_PORT=8000 FRONTEND_PORT=5173 VITE_API_URL=http://localhost:8000 docker compose up --build
+```
+
+En PowerShell:
+
+```powershell
+$env:BACKEND_PORT = "8000"
+$env:FRONTEND_PORT = "5173"
+$env:VITE_API_URL = "http://localhost:8000"
+docker compose up --build
+```
+
+### Crear usuarios demo
+
+Con los servicios levantados, ejecuta el comando interactivo. Las contraseÃ±as se solicitan de forma oculta y no se escriben en el repositorio:
+
+```bash
+docker compose exec backend python -m app.seed_demo_users
+```
+
+TambiÃ©n se pueden proporcionar temporalmente mediante `MODERATION_DEMO_MODERATOR_PASSWORD` y `MODERATION_DEMO_SUPERVISOR_PASSWORD`; no las aÃ±adas a `docker-compose.yml` ni a un archivo `.env` versionado.
+
+### Importar comentarios sintÃ©ticos
+
+1. Abre Swagger en http://localhost:8000/docs.
+2. Ejecuta `POST /auth/login` con el usuario `supervisor` y la contraseÃ±a local elegida.
+3. Pulsa **Authorize** y pega el `access_token` como `Bearer <token>`.
+4. Ejecuta `POST /comments/import` con un lote como este:
+
+```json
+{
+  "items": [
+    {
+      "comment_id": "docker-demo-1",
+      "video_id": "video-demo",
+      "text": "This is a synthetic comment for the moderation queue."
+    },
+    {
+      "comment_id": "docker-demo-2",
+      "video_id": "video-demo",
+      "text": "This synthetic comment contains an insulting phrase for review."
+    }
+  ]
+}
+```
+
+El modelo simulado puede utilizarse en la demo si no existe el artefacto Logistic + TF-IDF; sus puntuaciones sirven solo para ordenar la cola y no representan una predicciÃ³n real.
+
 ## Modelos evaluados
 
 Los modelos se compararon sobre un split común por `VideoId`. El threshold se seleccionó únicamente con validation; el conjunto de test no se utilizó para seleccionar modelo, pesos ni threshold.
