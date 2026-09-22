@@ -1,4 +1,3 @@
-````markdown
 <div align="center">
 
 # Moderación asistida de comentarios
