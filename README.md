@@ -1,6 +1,4 @@
-# Moderación asistida de comentarios de YouTube
-
-### La máquina prioriza; la persona decide
+# Moderación asistida de comentarios
 
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -10,46 +8,30 @@
 
 ## ¿Qué es este proyecto?
 
-Es una aplicación que ayuda a revisar muchos comentarios de YouTube de forma más ordenada.
+## Qué es
 
-La aplicación calcula una **puntuación de riesgo** para cada comentario y los coloca en una cola de revisión. Así, la persona moderadora puede empezar por los comentarios que parecen necesitar más atención.
+Es una aplicación de moderación asistida para organizar comentarios y ayudar a una persona moderadora a decidir cuáles revisar primero. Calcula una puntuación de riesgo orientativa, muestra una cola priorizada y permite consultar el texto completo solo a usuarios autenticados y autorizados.
 
-La puntuación es solo una ayuda. **La decisión final siempre la toma una persona.**
+Está pensada para equipos de moderación que necesitan revisar muchos comentarios de forma ordenada y trazable. El MVP trabaja con comentarios en inglés y utiliza `IsToxic` como referencia de alcance; esta etiqueta no cubre por sí sola gravedad, violencia, discurso de odio ni todas las políticas de una plataforma.
 
-## ¿Para quién está pensado?
+## Qué problema resuelve
 
-Está pensado para personas que moderan comentarios de YouTube, especialmente cuando tienen que revisar muchos comentarios en inglés.
+Revisar comentarios solo por orden de llegada puede retrasar los casos que necesitan atención. El sistema usa una señal estimada para ordenar la cola y ayudar a la persona moderadora a priorizar su trabajo.
 
-La persona moderadora puede:
+## Qué hace y qué no hace
 
-- Ver una cola de comentarios ordenada por riesgo estimado.
-- Consultar el texto completo y el contexto autorizado.
-- Revisar cada comentario manualmente.
-- Registrar qué decisión tomó y dejar un registro trazable.
+Hace lo siguiente:
 
-## ¿Qué hace?
+- Importa y valida lotes de comentarios.
+- Calcula riesgo e incertidumbre y ordena una cola pendiente.
+- Oculta el texto completo en la cola y lo muestra solo en el detalle autorizado.
+- Permite registrar `NEEDS_REVIEW`, `CONFIRMED_TOXIC` o `NOT_TOXIC`, con notas opcionales.
+- Guarda usuario, fecha, estado y decisión de la revisión.
+- Aplica autenticación y roles `MODERATOR` y `SUPERVISOR`.
 
-- Recibe un lote de comentarios.
-- Comprueba que los datos sean válidos.
-- Estima una señal relacionada con la toxicidad.
-- Ordena los comentarios de mayor a menor riesgo estimado.
-- Permite consultar el detalle de un comentario autorizado.
-- Permite registrar una revisión humana.
+No elimina, bloquea, denuncia ni sanciona comentarios; no se conecta a YouTube; no funciona en tiempo real; no clasifica sentimientos ni interpreta automáticamente políticas externas. La puntuación no es una decisión automática ni una certeza: solo sirve para priorizar y la decisión final siempre la toma una persona moderadora.
 
-Cuando dos comentarios tienen la misma puntuación, se conserva el orden en el que fueron recibidos.
-
-## ¿Qué no hace?
-
-Este MVP:
-
-- No se conecta directamente a YouTube.
-- No publica, oculta, elimina ni responde comentarios.
-- No aplica sanciones.
-- No decide automáticamente si un comentario incumple una norma.
-- No sustituye a la persona moderadora.
-- No puede entender por sí solo toda la ironía, la intención o el contexto que falta.
-
-## ¿Cómo funciona?
+## Cómo funciona
 
 ```mermaid
 flowchart LR
@@ -198,68 +180,30 @@ Ejemplo:
 python -m venv .venv
 ```
 
-En Linux/macOS:
+## Estructura y documentación
 
-```bash
-source .venv/bin/activate
-pip install -e ".[dev]"
-python -m app.seed_demo_users
-uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
+```text
+backend/app/                 API FastAPI, autenticación, comentarios y base de datos
+backend/tests/               Tests de la API y revisiones
+frontend/src/                Aplicación React/Vite
+src/moderation/              Modelos y evaluación
+scripts/                     Entrenamiento y comparación
+docs/backend/                Documentación de API y demo
+docs/model/                  Documentación de modelos y métricas
+data/splits/                 Split común versionado
+configs/                     Configuraciones de evaluación
 ```
 
-En Windows PowerShell:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
-python -m app.seed_demo_users
-python -m uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
-```
+- [Visión de producto](docs/product-vision.md)
+- [Discovery](docs/product/DISCOVERY.md)
+- [Primer endpoint](docs/backend/01-primer-endpoint.md)
+- [Persistencia](docs/backend/02-base-de-datos.md)
+- [Autenticación y permisos](docs/backend/03-autenticacion-y-permisos.md)
+- [Carga y cola priorizada](docs/backend/04-carga-y-cola-priorizada.md)
+- [Logistic + TF-IDF](docs/model/logistic-tfidf.md)
+- [Ensemble](docs/model/ensemble.md)
+- [Transformer](docs/model/transformer.md)
 
 ### Frontend
 
-```bash
-cd frontend
-npm install
-```
-
-Crea `frontend/.env` con:
-
-```env
-VITE_API_URL=http://127.0.0.1:8000
-```
-
-Arranca el frontend:
-
-```bash
-npm run dev
-```
-
-Para validar el frontend:
-
-```bash
-npm run build
-npm run lint
-```
-
-## Privacidad y seguridad
-
-- Los tokens permanecen en memoria en el frontend.
-- Las contraseñas no se guardan en Git.
-- La cola no devuelve el texto completo de los comentarios.
-- El texto completo solo aparece en el detalle autorizado.
-- Los archivos `.env`, las bases SQLite, los modelos y los datos locales están excluidos del repositorio.
-- No se ejecutan acciones externas automáticas sobre los comentarios.
-
-## Estado del proyecto
-
-El proyecto está en fase **MVP**. Ya incluye la API, autenticación, importación de comentarios, cola priorizada, modelo inicial, frontend React, revisiones humanas, persistencia SQLite, Docker Compose y documentación Swagger.
-
-Queda pendiente:
-
-- Validar la solución con personas moderadoras.
-- Medir la experiencia de uso.
-- Revisar manualmente accesibilidad y seguridad.
-- Validar el modelo con datos más representativos.
-- Confirmar la licencia y autoría original del dataset.
-- Preparar un despliegue en producción.
+Proyecto desarrollado por **Fernanda**, **Gabriela** y **Arnaldo** durante el bootcamp de Inteligencia Artificial de Factoría F5.
