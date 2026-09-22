@@ -1,12 +1,12 @@
 """Parameterized persistence operations; no HTTP or password verification here."""
 
-import sqlite3
+from typing import Any
 
 from app.auth.models import Role, User
 from app.database import Database
 
 
-def _user(row: sqlite3.Row | None) -> User | None:
+def _user(row: Any | None) -> User | None:
     if row is None:
         return None
     return User(
@@ -38,7 +38,7 @@ class AuthRepository:
         with self.database.connect() as connection:
             return _user(connection.execute("""
                 SELECT users.* FROM sessions JOIN users ON users.id=sessions.user_id
-                WHERE sessions.token_hash=? AND sessions.expires_at>? AND users.is_active=1
+                WHERE sessions.token_hash=? AND sessions.expires_at>? AND users.is_active
             """, (digest, now)).fetchone())
 
     def revoke_session(self, digest: str) -> None:
@@ -47,6 +47,27 @@ class AuthRepository:
 
     def record_attempt(self, username: str, now: int, limit: int, window: int) -> int | None:
         """Reserve one attempt atomically; return seconds to wait when exhausted."""
+        if self.database.is_postgres:
+            cutoff = now - window
+            with self.database.connect() as connection:
+                row = connection.execute("""
+                    INSERT INTO login_attempts(username, attempts, window_started_at)
+                    VALUES (?, 1, ?)
+                    ON CONFLICT(username) DO UPDATE SET
+                        attempts = CASE
+                            WHEN login_attempts.window_started_at<=? THEN 1
+                            ELSE login_attempts.attempts+1
+                        END,
+                        window_started_at = CASE
+                            WHEN login_attempts.window_started_at<=? THEN EXCLUDED.window_started_at
+                            ELSE login_attempts.window_started_at
+                        END
+                    RETURNING attempts, window_started_at
+                """, (username, now, cutoff, cutoff)).fetchone()
+            if row["attempts"] > limit:
+                return max(1, row["window_started_at"] + window - now)
+            return None
+
         with self.database.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             connection.execute("DELETE FROM login_attempts WHERE window_started_at<=?", (now - window,))
