@@ -1,6 +1,7 @@
 """Train and evaluate the TF-IDF + logistic regression baseline."""
 
 import json
+import hashlib
 from pathlib import Path
 
 import joblib
@@ -25,6 +26,7 @@ SPLITS = ("train", "validation", "test")
 DEFAULT_THRESHOLD = 0.5
 TARGET_RECALL = 0.8
 REVIEW_SIZES = (10, 20, 50, 100)
+MODEL_VERSION = "logistic-tfidf-v1"
 
 
 def _read_dataset(dataset_path: str | Path) -> pd.DataFrame:
@@ -217,7 +219,8 @@ def run_training(
 
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, output / "logistic_tfidf.joblib")
+    artifact_path = output / "logistic_tfidf.joblib"
+    joblib.dump(model, artifact_path)
     validation = partitions["validation"]
     validation_actual = validation["IsToxic"].astype(int).to_numpy()
     validation_probability = model.predict_proba(validation["Text"].str.strip())[:, 1]
@@ -230,6 +233,7 @@ def run_training(
     validation_predictions.to_csv(output / "validation_predictions.csv", index=False)
     report = {
         "model": "char-tfidf-logistic-regression-v2",
+        "model_version": MODEL_VERSION,
         "threshold": threshold,
         "threshold_status": "selected_on_validation_for_target_recall",
         "target_recall": TARGET_RECALL,
@@ -255,4 +259,15 @@ def run_training(
         if stale_test.exists():
             stale_test.unlink()
     (output / "metrics.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    (output / "artifact_metadata.json").write_text(
+        json.dumps({
+            "model_version": MODEL_VERSION,
+            "artifact": artifact_path.name,
+            "artifact_sha256": hashlib.sha256(artifact_path.read_bytes()).hexdigest(),
+            "threshold": threshold,
+            "threshold_source": "validation_only",
+            "preprocessing": "TfidfVectorizer(char_wb, ngram_range=(3, 5), min_df=2, sublinear_tf=True)",
+            "classifier": "LogisticRegression(C=3, class_weight=balanced, solver=liblinear, random_state=42)",
+        }, indent=2) + "\n", encoding="utf-8"
+    )
     return report
