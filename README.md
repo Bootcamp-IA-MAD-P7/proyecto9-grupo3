@@ -93,6 +93,13 @@ En <http://127.0.0.1:8000/docs>:
 5. Comprueba que `moderator` puede consultar la cola pero recibe `403` al
    importar, mientras que `supervisor` recibe `201`.
 
+Flujo HTTP verificado localmente con tres comentarios sintéticos: `/health`
+devolvió `200`, el login de supervisor `200`, la importación `201`, las páginas
+de la cola devolvieron `200` con 2 y 1 elementos, el login de moderator `200`,
+su consulta de cola `200`, su intento de importar `403` y la repetición del lote
+`409` por duplicado. El orden observado fue `demo-b`, `demo-a`, `demo-c`; es un
+orden determinista del scorer simulado, no una valoración real de toxicidad.
+
 La base SQLite del demo se guarda en `data/local/` y está excluida de Git.
 No uses comentarios reales, credenciales compartidas ni datos privados.
 
