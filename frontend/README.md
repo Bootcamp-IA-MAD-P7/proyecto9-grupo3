@@ -9,7 +9,10 @@ npm install
 npm run dev
 ```
 
-Configura `VITE_API_URL` en un archivo `.env` local, por ejemplo `http://localhost:8000`. El token solo vive en memoria y se envía como `Authorization: Bearer <token>`; no se usa `localStorage` ni `sessionStorage`.
+Configura `VITE_API_URL` en un archivo `.env` local, por ejemplo `http://localhost:8000`.
+En Vercel no es necesario: Services publica la API en `/api` dentro del mismo
+dominio. El token solo vive en memoria y se envía como `Authorization: Bearer
+<token>`; no se usa `localStorage` ni `sessionStorage`.
 
 Validación:
 
