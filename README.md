@@ -1,325 +1,206 @@
+````markdown
 <div align="center">
 
 # Moderación asistida de comentarios
 
-### NLP clásico para priorizar la revisión humana de contenido potencialmente tóxico
+### Priorización de revisión humana mediante NLP y Machine Learning
 
-[![Project harness](https://github.com/Bootcamp-IA-MAD-P7/proyecto9-grupo3/actions/workflows/harness.yml/badge.svg?branch=dev)](https://github.com/Bootcamp-IA-MAD-P7/proyecto9-grupo3/actions/workflows/harness.yml)
-![Status](https://img.shields.io/badge/status-foundations_complete-1f883d)
-![Approach](https://img.shields.io/badge/approach-human--in--the--loop-0969da)
-![Language](https://img.shields.io/badge/MVP-English_comments-8250df)
+[![Harness](https://github.com/Bootcamp-IA-MAD-P7/proyecto9-grupo3/actions/workflows/harness.yml/badge.svg?branch=dev)](https://github.com/Bootcamp-IA-MAD-P7/proyecto9-grupo3/actions/workflows/harness.yml)
+![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-local_API-009688?logo=fastapi&logoColor=white)
+![MVP](https://img.shields.io/badge/MVP-English_comments-8250DF)
+![Approach](https://img.shields.io/badge/approach-human--in--the--loop-0969DA)
+![Demo](https://img.shields.io/badge/API_demo-verified-1F883D)
 
-Una herramienta de apoyo para que una persona moderadora identifique antes los
-comentarios que requieren atención, sin delegar la decisión final en el modelo.
+Una API interna que ayuda a priorizar comentarios potencialmente tóxicos para su revisión humana, sin delegar en el modelo la decisión final de moderación.
 
 </div>
 
 ---
 
+## Problema
+
+La revisión de comentarios en orden de llegada puede retrasar casos que requieren atención prioritaria. Este proyecto explora si una señal de riesgo estimado de toxicidad puede ayudar a una persona moderadora a organizar su trabajo y decidir qué comentario revisar primero.
+
+El MVP trabaja con comentarios en inglés y con la etiqueta `IsToxic`. Esta etiqueta sirve como señal de toxicidad para el alcance del proyecto; no mide por sí sola gravedad, violencia, discurso de odio ni cumplimiento completo de las políticas de YouTube.
+
+## Propuesta de valor
+
+El sistema permite:
+
+- Importar y validar lotes de comentarios.
+- Autenticar usuarios y aplicar permisos por rol.
+- Asignar una señal de riesgo para ordenar una cola.
+- Consultar la cola de forma paginada sin devolver el texto.
+- Mantener la decisión final bajo control humano.
+
+El sistema no:
+
+- Elimina, bloquea, denuncia ni sanciona comentarios.
+- Se conecta a YouTube ni opera en tiempo real.
+- Clasifica sentimiento.
+- Interpreta automáticamente políticas de moderación.
+- Presenta una puntuación como una certeza.
+
+## Flujo del MVP
+
+```mermaid
+flowchart TD
+    A[Comentario en inglés] --> B[Validación de entrada]
+    B --> C[Puntuación de riesgo]
+    C --> D[Cola priorizada]
+    D --> E[Revisión humana]
+    E --> F[Decisión de moderación]
+
+    C -. "Demo actual" .-> G[SimulatedScorer]
+    C -. "Siguiente integración" .-> H[Logistic + TF-IDF]
+````
+
+> La demo actual utiliza `SimulatedScorer`. El modelo seleccionado todavía no está conectado a la API.
+
 ## Estado del proyecto
 
-| Área | Estado | Evidencia actual |
-| --- | :---: | --- |
-| Problema, persona y alcance del MVP | ✅ | [Visión de producto](docs/product-vision.md) |
-| Flujo Jira, Git y pull requests | ✅ | [Guía de contribución](CONTRIBUTING.md) |
-| SDD, OpenSpec y project harness | ✅ | [Project harness](docs/HARNESS.md) |
-| Controles de calidad y seguridad | ✅ | Harness automático y protección de ramas |
-| Base del backend | ✅ | API local con `/health`, documentación y pruebas; [guía del paso 1](docs/backend/01-primer-endpoint.md) |
-| Persistencia del backend | ✅ | SQLite guarda usuarios y comentarios; [guía del paso 2](docs/backend/02-base-de-datos.md) |
-| Autenticación y permisos | ✅ | Login, sesiones SQLite, hashes Argon2id y guard de roles; [guía del paso 3](docs/backend/03-autenticacion-y-permisos.md) |
-| Carga y cola priorizada | ✅ | Lotes validados, puntuación simulada y cola paginada sin texto; [guía del paso 4](docs/backend/04-carga-y-cola-priorizada.md) |
-| Modelos y ensemble | ✅ | Tres modelos y ensemble ponderado evaluados; configuración, comparación y test final documentados en [su guía](docs/model/ensemble.md) |
-| Vertical funcional y demo | ⏳ | Pendiente de implementación |
-| Arquitectura y despliegue AWS | ⏳ | Se decidirán con las necesidades del vertical |
+| Área                                | Estado        | Evidencia                                                          |
+| ----------------------------------- | ------------- | ------------------------------------------------------------------ |
+| Problema, alcance y límites del MVP | Implementado  | [Visión de producto](docs/product-vision.md)                       |
+| API FastAPI                         | Implementada  | `backend/app/`                                                     |
+| Persistencia local                  | Implementada  | SQLite en `data/local/`                                            |
+| Autenticación y roles               | Implementados | `backend/app/auth/`                                                |
+| Importación y cola priorizada       | Implementadas | `backend/app/comments/`                                            |
+| Demo HTTP local                     | Verificada    | [Guía de carga y cola](docs/backend/04-carga-y-cola-priorizada.md) |
+| Evaluación de modelos               | Implementada  | [Guía del ensemble](docs/model/ensemble.md)                        |
+| Modelo clásico candidato            | Seleccionado  | Logistic Regression + TF-IDF                                       |
+| Inferencia real en la API           | Pendiente     | Requiere artefacto y scorer reproducibles                          |
+| Despliegue                          | Pendiente     | Posterior al vertical local completo                               |
 
-> **Estado verificable:** la API local, la persistencia SQLite, el login y la
-> cola con puntuaciones simuladas están operativos. La revisión humana, el
-> modelo evaluado y el despliegue todavía no están implementados.
+## Demo funcional de la API
 
-## Ejecutar la primera API
+La API local está verificada con comentarios sintéticos.
 
-Desde la raíz del repositorio, con Python 3.12 o superior:
+| Comprobación                      | Resultado                    |
+| --------------------------------- | ---------------------------- |
+| `GET /health`                     | `200`                        |
+| Login de `supervisor`             | `200` y rol `SUPERVISOR`     |
+| Importación de tres comentarios   | `201`                        |
+| Cola paginada                     | `200`, con páginas `2 + 1`   |
+| Login de `moderator`              | `200` y rol `MODERATOR`      |
+| Consulta de cola como `moderator` | `200`                        |
+| Importación como `moderator`      | `403`                        |
+| Repetición del lote               | `409`                        |
+| Texto expuesto en la cola         | No                           |
+| Orden observado                   | `demo-b`, `demo-a`, `demo-c` |
+
+El orden actual proviene de `SimulatedScorer`: es determinista y permite verificar el contrato técnico de la API, pero **no representa una probabilidad real de toxicidad**.
+
+## Ejecutar la API local
+
+Requisitos: Python 3.12 o superior.
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -c backend/constraints.txt -e '.[dev]'
+.\.venv\Scripts\python.exe -m app.seed_demo_users
 .\.venv\Scripts\python.exe -m uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
 ```
 
-Abre [la documentación local](http://127.0.0.1:8000/docs) y prueba `GET /health`.
-La [guía del primer endpoint](docs/backend/01-primer-endpoint.md) explica cada
-archivo, cómo ejecutar las pruebas y qué construiremos en las siguientes entregas.
+Abre http://127.0.0.1:8000/docs para probar la API desde Swagger.
 
-La [guía de persistencia](docs/backend/02-base-de-datos.md) explica las tablas,
-las transacciones y cómo inspeccionarlas con datos sintéticos. La base local se
-guarda en `data/local/moderation.db` y queda fuera de Git.
+El comando de usuarios solicita contraseñas locales para `moderator` y `supervisor`. No uses credenciales compartidas ni las guardes en Git.
 
-Para probar autenticación, carga los usuarios `moderator` y `supervisor` con
-contraseñas elegidas por ti:
+## Modelos evaluados
 
-```powershell
-.\.venv\Scripts\python.exe -m app.seed_demo_users
+Los modelos se compararon sobre un split común por `VideoId`. El threshold se seleccionó únicamente con validation; el conjunto de test no se utilizó para seleccionar modelo, pesos ni threshold.
+
+| Modelo                       | F1 validation | PR-AUC validation | Brier validation | Estado                            |
+| ---------------------------- | ------------: | ----------------: | ---------------: | --------------------------------- |
+| Logistic Regression + TF-IDF |        0,7306 |            0,7793 |           0,2166 | Candidato productivo seleccionado |
+| SVM + TF-IDF                 |        0,7122 |            0,7398 |           0,2475 | Evaluado                          |
+| Transformer DistilBERT       |        0,7734 |            0,8767 |           0,2060 | Experimento; fuera de producción  |
+
+También se evaluaron combinaciones Logistic/SVM con pesos `100/0`, `75/25`, `50/50`, `25/75` y `0/100`.
+
+La mejor combinación fue `75/25`, con F1 `0,7226` y Brier `0,2208`. No mejoró simultáneamente F1 y calibración frente a Logistic individual.
+
+### Decisión de modelo
+
+Se selecciona **Logistic Regression + TF-IDF** como candidato inicial para la inferencia productiva porque fue la mejor alternativa clásica evaluada y mantiene una complejidad operativa menor.
+
+Esta decisión no significa que el modelo ya esté conectado a la API.
+
+La implementación actual del ensemble combina probabilidades precalculadas y todavía no ofrece una interfaz de inferencia para textos nuevos:
+
+```python
+score_comment(text: str) -> Score
 ```
 
-La [guía de autenticación y permisos](docs/backend/03-autenticacion-y-permisos.md)
-recorre login, autorización en Swagger y logout.
+El siguiente paso técnico es:
 
-La [guía de carga y cola](docs/backend/04-carga-y-cola-priorizada.md) muestra
-cómo importar comentarios sintéticos y recorrer páginas sin exponer su texto.
+1. Empaquetar el vectorizador y el clasificador Logistic.
+2. Crear un scorer reproducible que cargue el artefacto sin reentrenar.
+3. Añadir pruebas de carga e inferencia.
+4. Integrar el scorer real en la API.
+5. Repetir la demo HTTP con `score_source="MODEL"`.
 
-## Demo local de la API
+## Limitaciones del Transformer
 
-La API actual funciona sin dataset ni modelo entrenado: usa `SimulatedScorer`,
-un scorer determinista para demostrar importación, permisos y orden de la cola.
-Sus puntuaciones no son probabilidades de toxicidad y no deben usarse para
-decisiones reales de moderación.
+El Transformer DistilBERT funcionó como experimento de entrenamiento y evaluación, pero no se seleccionó para producción debido a una señal clara de overfitting.
 
-Desde otra terminal, prepara usuarios con contraseñas locales elegidas por ti,
-inicia la API y abre Swagger:
+| Ejecución                       | F1 train | F1 validation |      Gap |
+| ------------------------------- | -------: | ------------: | -------: |
+| Línea base                      |   0,9639 |        0,7888 | 17,51 pp |
+| `weight_decay` + early stopping |   0,9640 |        0,7734 | 19,06 pp |
 
-```powershell
-.\.venv\Scripts\python.exe -m app.seed_demo_users
-.\.venv\Scripts\python.exe -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000
-```
+La regularización probada no mejoró el resultado y aumentó el gap. El conjunto de test permaneció cerrado, por lo que no se declara cumplido el requisito de una diferencia train-test inferior al 5 %.
 
-En <http://127.0.0.1:8000/docs>:
+El Transformer queda documentado como experimento evaluado y no debe presentarse como modelo productivo de la demo.
 
-1. Comprueba `GET /health`.
-2. Ejecuta `POST /auth/login` como `supervisor` y usa el `access_token` en
-   **Authorize**.
-3. Importa dos comentarios sintéticos con `POST /comments/import`.
-4. Consulta `GET /comments` como `supervisor` y como `moderator`; la respuesta
-   muestra la cola priorizada sin devolver `text`.
-5. Comprueba que `moderator` puede consultar la cola pero recibe `403` al
-   importar, mientras que `supervisor` recibe `201`.
+## Validación
 
-Flujo HTTP verificado localmente con tres comentarios sintéticos: `/health`
-devolvió `200`, el login de supervisor `200`, la importación `201`, las páginas
-de la cola devolvieron `200` con 2 y 1 elementos, el login de moderator `200`,
-su consulta de cola `200`, su intento de importar `403` y la repetición del lote
-`409` por duplicado. El orden observado fue `demo-b`, `demo-a`, `demo-c`; es un
-orden determinista del scorer simulado, no una valoración real de toxicidad.
-
-La base SQLite del demo se guarda en `data/local/` y está excluida de Git.
-No uses comentarios reales, credenciales compartidas ni datos privados.
-
-## Dataset y entrenamiento del Transformer
-
-El entrenamiento espera el CSV local `data/raw/youtoxic_english_1000.csv`. Ese
-archivo no se versiona ni se descarga automáticamente. Si está autorizado y
-disponible en otra ruta, indícala explícitamente:
-
-```powershell
-.\.venv\Scripts\python.exe scripts/train_transformer.py --dataset RUTA_LOCAL.csv
-```
-
-Si no existe el archivo esperado ni una copia autorizada con nombre alternativo,
-el comando termina con un mensaje claro y no genera métricas. En este entorno la
-copia local disponible es `data/raw/youtoxic_english_1000 (1).csv`; se ejecuta
-pasándola explícitamente con `--dataset`. No sustituyas el dataset del proyecto
-por datasets de ejemplo de scikit-learn.
-La guía completa del modelo está en [docs/model/transformer.md](docs/model/transformer.md);
-el test permanece cerrado salvo que se use `--final-test` con la configuración
-congelada requerida.
-
-## Estado real del Transformer
-
-El pipeline de DistilBERT está implementado y ya fue entrenado con el dataset
-local `data/raw/youtoxic_english_1000 (1).csv`. El threshold se selecciona
-exclusivamente con validation; test no se usa para ajustar hiperparámetros y
-permanece cerrado en esta auditoría.
-
-La línea base validada antes de la primera regularización fue:
-
-| Métrica | Train | Validation |
-| --- | ---: | ---: |
-| F1 | 0,9639 | 0,7888 |
-| Precision | 0,9524 | 0,7734 |
-| Recall | 0,9756 | 0,8049 |
-| PR-AUC | 0,9933 | 0,8815 |
-| Brier score | 0,0231 | 0,1859 |
-
-El gap F1 train-validation fue de **17,51 puntos porcentuales**, una señal clara
-de overfitting. La primera hipótesis de reducción (`weight_decay` 0,01 y early
-stopping por F1 de validation, con paciencia 2 y recuperación del mejor estado)
-ya fue ejecutada. La nueva ejecución produjo:
-
-| Métrica | Train nuevo | Validation nueva |
-| --- | ---: | ---: |
-| F1 | 0,9640 | 0,7734 |
-| Precision | 0,9488 | 0,7444 |
-| Recall | 0,9797 | 0,8049 |
-| PR-AUC | 0,9936 | 0,8767 |
-| Brier score | 0,0323 | 0,2060 |
-
-El nuevo gap es de **19,06 puntos porcentuales**: `weight_decay` más early
-stopping no mejoraron el overfitting en esta ejecución. El requisito train-test
-menor del 5 % no está demostrado ni cumplido para el Transformer porque test
-continúa cerrado. El Transformer queda como experimento evaluado y no se usará
-como modelo productivo principal en la demo. No se continuará con Optuna por
-falta de tiempo y porque primero hay que resolver el sobreajuste.
-
-El dataset y todos los artefactos de `data/local/` no se versionan. El siguiente
-experimento deberá probar otra estrategia explicable y comparar train y validation;
-no se abrirá test hasta una evaluación final autorizada.
-
-## Estado del ensemble productivo
-
-El ensemble clásico se evaluó en validation con cinco pesos Logistic/SVM y una
-política común: seleccionar el umbral para alcanzar al menos 80 % de recall.
-Logistic individual fue la mejor opción clásica (F1 0,7306); ninguna combinación
-mejoró ese resultado. El mejor intento combinado fue 75/25 (F1 0,7226, Brier
-0,2208), por debajo de Logistic. La decisión actual es **LOGISTIC INDIVIDUAL
-SELECCIONADO** como candidato productivo, pendiente de implementar y verificar
-la inferencia para textos nuevos.
-
-El código actual combina archivos de probabilidades precalculadas y no expone
-una capa `score_comment(text) -> Score`. No se han cambiado los pesos de
-`configs/ensemble.json`, que todavía dan predominio al Transformer. El
-Transformer queda fuera del modelo productivo por el overfitting documentado.
-
-## El problema
-
-Revisar comentarios en orden de llegada puede hacer que contenido potencialmente
-dañino espere mientras se atienden casos de menor riesgo. El proyecto explora si
-una cola priorizada permite decidir antes qué comentario revisar.
-
-## La propuesta
-
-El MVP procesará comentarios en inglés y estimará el **riesgo de toxicidad** para
-el objetivo inicial `IsToxic`. La señal servirá para ordenar la revisión; no será
-un veredicto, una medida de gravedad ni una interpretación de las políticas de
-YouTube.
-
-| El sistema ayuda a… | El sistema no… |
-| --- | --- |
-| Priorizar comentarios por riesgo estimado | Elimina, bloquea, denuncia o sanciona |
-| Revisar manualmente texto en inglés | Se conecta a YouTube ni opera en tiempo real |
-| Mantener un orden estable en los empates | Clasifica sentimiento o español |
-| Mostrar resultados y errores comprensibles | Presenta probabilidades como certezas |
-| Conservar la decisión humana final | Sustituye el criterio de moderación |
-
-## Recorrido previsto del MVP
-
-```mermaid
-flowchart LR
-    A[Comentario en inglés] --> B[Validación de entrada]
-    B --> C[Pipeline NLP versionado]
-    C --> D[Riesgo estimado de IsToxic]
-    D --> E[Cola priorizada]
-    E --> F[Revisión humana]
-    F --> G[Decisión final fuera del modelo]
-
-    classDef input fill:#f6f8fa,stroke:#57606a,color:#24292f;
-    classDef system fill:#ddf4ff,stroke:#0969da,color:#0550ae;
-    classDef human fill:#dafbe1,stroke:#1a7f37,color:#116329;
-    class A input;
-    class B,C,D,E system;
-    class F,G human;
-```
-
-El pipeline técnico previsto utilizará técnicas clásicas y reproducibles:
+La última ejecución registrada del bloque de modelos fue:
 
 ```text
-Dataset → validación → split reproducible → preprocesamiento → TF-IDF
-        → clasificador → evaluación → artefacto versionado → inferencia
+143 passed, 2 warnings, 2 subtests passed
 ```
 
-Las métricas se publicarán únicamente cuando hayan sido generadas por el pipeline
-de evaluación: `precision`, `recall`, `F1`, matriz de confusión, resultados de
-train/test y comprobación de posible fuga mediante `VideoId`.
+Comprobaciones adicionales:
 
-## Cómo trabajamos
-
-El proyecto aplica Specification-Driven Development con una cadena de trazabilidad
-ligera. Cada capa tiene una responsabilidad concreta:
-
-| Capa | Responsabilidad |
-| --- | --- |
-| Jira | Prioridad, responsable, estado y criterios de aceptación |
-| OpenSpec | Comportamiento verificable, diseño técnico y tareas |
-| Git y PR | Implementación, revisión, pruebas y evidencias |
-| Harness | Reglas automáticas que evitan desviaciones del proceso |
-| AWS | Evidencia futura de ejecución, no sustituto de la especificación |
-
-```mermaid
-flowchart LR
-    J[Jira SP-XX] --> S[OpenSpec cuando aplica]
-    S --> B[Rama desde dev]
-    B --> I[Implementación y evidencia]
-    I --> P[Pull request hacia dev]
-    P --> Q[Checks + revisión independiente]
-    Q --> M[Squash merge]
-    M --> D[dev]
-    D -->|release aceptada| R[main]
-```
-
-### Controles aplicados
-
-- Ramas `feature/`, `fix/`, `docs/`, `test/`, `ci/` o `chore/` con clave Jira.
-- Conventional Commits y títulos de PR normalizados en inglés.
-- Plantilla de PR con Jira, OpenSpec, criterios, pruebas, evidencias y rollback.
-- Revisión independiente y check `validate` obligatorios antes del merge.
-- `dev` como rama de integración; `main` reservada para releases aceptadas.
-- Squash merge, historial lineal y bloqueo del push directo.
-- Exclusión de credenciales, `.env`, claves y rutas locales de datos sensibles.
-- Tags y releases diferidos hasta que exista el primer vertical funcional.
-
-## Validación local
-
-El repositorio no necesita dependencias adicionales para comprobar su estructura:
-
-```powershell
-python -m unittest tests.test_validate_harness
-python scripts/validate_harness.py
+```bash
+python -m compileall -q backend/app src
 git diff --check
 ```
 
-## Estructura actual
+## Estructura relevante
 
 ```text
-.
-├── .agents/                  # Skills reutilizables para agentes
-├── .github/                  # CODEOWNERS, PR template y workflow
-├── backend/                  # API FastAPI, pruebas y dependencias verificadas
-├── docs/                     # Visión, discovery, harness y estándares
-├── openspec/changes/         # Propuestas, diseño, specs y tareas verificables
-├── scripts/                  # Validadores ligeros del repositorio
-├── tests/                    # Pruebas automáticas del harness
-├── AGENTS.md                 # Punto de entrada para agentes
-├── CONTRIBUTING.md           # Guía breve de contribución
-├── pyproject.toml            # Paquete Python y configuración de pruebas
-└── README.md                 # Visión general y estado verificable
+backend/app/                 API FastAPI, autenticación, comentarios y base de datos
+backend/tests/               Tests de la API y del flujo de comentarios
+src/moderation/              Código de modelos y evaluación
+scripts/                     Entrenamiento y comparación de modelos
+docs/backend/                Documentación de la API y la demo
+docs/model/                  Documentación de modelos, métricas y limitaciones
+data/splits/                 Split común versionado
+configs/                     Configuraciones de evaluación
 ```
 
-La API, la base de datos, la autenticación y la cola simulada están implementadas.
-La revisión humana, el modelo evaluado y la infraestructura se añadirán después.
+El dataset original, los artefactos locales, las bases SQLite, las credenciales y los archivos `.env` no se versionan.
 
 ## Documentación
 
-| Documento | Propósito |
-| --- | --- |
-| [Visión de producto](docs/product-vision.md) | Problema, persona, alcance, métricas y límites del MVP |
-| [Project charter](docs/product/PROJECT_CHARTER.md) | Encargo, contexto y criterio de éxito |
-| [Discovery](docs/product/DISCOVERY.md) | Evidencia e hipótesis de producto |
-| [Estándares base](docs/base-standards.md) | Fuente única de verdad para las normas del equipo |
-| [Project harness](docs/HARNESS.md) | Ciclo SDD, controles y puertas humanas |
-| [Guía de contribución](CONTRIBUTING.md) | Entrada breve al flujo de trabajo |
-| [OpenSpec](openspec/changes/) | Contratos versionados y escenarios verificables |
-
-## Próximos hitos
-
-1. Auditar el dataset y construir una línea base reproducible para `IsToxic`.
-2. Definir los contratos entre modelo, API e interfaz.
-3. Implementar y verificar un vertical completo de comentario a predicción.
-4. Validar la experiencia, desplegar una demo autorizada y preparar evidencias.
-5. Promover la primera versión aceptada de `dev` a `main` y publicar su release.
+* [Visión de producto](docs/product-vision.md)
+* [Discovery](docs/product/DISCOVERY.md)
+* [Primer endpoint](docs/backend/01-primer-endpoint.md)
+* [Persistencia](docs/backend/02-base-de-datos.md)
+* [Autenticación y permisos](docs/backend/03-autenticacion-y-permisos.md)
+* [Carga y cola priorizada](docs/backend/04-carga-y-cola-priorizada.md)
+* [Logistic + TF-IDF](docs/model/logistic-tfidf.md)
+* [Ensemble](docs/model/ensemble.md)
+* [Transformer](docs/model/transformer.md)
 
 ## Equipo
 
-Proyecto desarrollado por **Gabriela Granja**, **Fernanda Trk** y
-**Miguel Redondo** durante el bootcamp de Inteligencia Artificial de
-Factoría F5.
+Proyecto desarrollado por **Fernanda**, **Gabriela** y **Arnaldo** durante el bootcamp de Inteligencia Artificial de Factoría F5.
 
-Las decisiones se registran en Jira, se especifican en OpenSpec cuando son
-materiales y se demuestran mediante código, pruebas y revisiones en GitHub.
+El objetivo no es únicamente obtener una métrica alta: buscamos entender el problema, evaluar alternativas, medir resultados, reconocer limitaciones y construir una solución que mantenga las decisiones de moderación bajo control humano.
+
+```
+```
