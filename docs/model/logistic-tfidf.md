@@ -137,7 +137,13 @@ Los resultados completos están en `data/local/logistic_tfidf/metrics.json`.
 
 ## Integración con el backend
 
-El backend todavía utiliza `SimulatedScorer`. Entrenar este pipeline no cambia
-las puntuaciones de la API: falta conectar un adaptador que cargue el artefacto
-evaluado y marque sus resultados como `MODEL`. La cola actual sirve para
-comprobar importación, permisos y orden, no para medir toxicidad.
+`LogisticScorer` carga `logistic_tfidf.joblib` y `artifact_metadata.json` una sola
+vez, sin volver a entrenar. Devuelve `risk_score` y `uncertainty` en [0, 1],
+`model_version="logistic-tfidf-v1"` y `score_source="MODEL"`. El metadata incluye
+el threshold seleccionado únicamente con validation, el preprocesamiento y el
+SHA-256 del artefacto. Si falta el artefacto, `SimulatedScorer` solo se usa como
+fallback local y sus valores no representan toxicidad. El Transformer no está
+conectado a producción y la decisión sigue siendo humana.
+### Contrato de inferencia productiva
+
+`LogisticScorer` carga `logistic_tfidf.joblib` y `artifact_metadata.json` una sola vez, sin reentrenar. Devuelve `risk_score` y `uncertainty` en [0, 1], `model_version="logistic-tfidf-v1"` y `score_source="MODEL"`. El metadata incluye el threshold seleccionado únicamente con validation, el preprocesamiento y el SHA-256 del artefacto. Si falta el artefacto, `SimulatedScorer` solo se usa como fallback local y sus valores no representan toxicidad. El Transformer no está conectado a producción y la decisión sigue siendo humana.
