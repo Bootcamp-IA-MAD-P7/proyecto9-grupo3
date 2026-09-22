@@ -1,6 +1,6 @@
 interface StatusMessageProps {
   title: string;
-  children: string;
+  children?: string;
   tone?: 'neutral' | 'error';
 }
 
@@ -8,7 +8,7 @@ export function StatusMessage({ title, children, tone = 'neutral' }: StatusMessa
   return (
     <div className={`status-message status-message--${tone}`} role={tone === 'error' ? 'alert' : undefined}>
       <strong>{title}</strong>
-      <p>{children}</p>
+      <p>{children ?? 'Comprueba la conexión e inténtalo de nuevo.'}</p>
     </div>
   );
 }
