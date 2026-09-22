@@ -26,16 +26,53 @@ class Database:
         with self.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0, 1, 2, 3):
+            if version not in (0, 1, 2, 3, 4):
                 raise RuntimeError("Unsupported database schema version")
-            if version == 3:
+            if version == 4:
                 return
             if version == 0:
                 self._create_persistence_schema(connection)
             if version < 2:
                 self._create_auth_schema(connection)
             self._add_scoring_schema(connection)
-            connection.execute("PRAGMA user_version=3")
+            if version < 4:
+                self._add_review_schema(connection)
+            connection.execute("PRAGMA user_version=4")
+
+    def _add_review_schema(self, connection: sqlite3.Connection) -> None:
+        """Add review traceability and a status constraint that includes REVIEWED."""
+        connection.execute("ALTER TABLE comments RENAME TO comments_legacy")
+        connection.execute("""
+            CREATE TABLE comments (
+                sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                comment_id TEXT NOT NULL UNIQUE,
+                video_id TEXT NOT NULL,
+                text TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'PENDING'
+                    CHECK (status IN ('PENDING', 'IN_REVIEW', 'REVIEWED',
+                                     'CLASSIFIED', 'ESCALATED', 'RESOLVED',
+                                     'REOPEN_REQUESTED', 'REOPENED')),
+                assignee_id TEXT REFERENCES users(id) ON DELETE RESTRICT,
+                risk_score REAL CHECK (risk_score BETWEEN 0 AND 1),
+                uncertainty REAL CHECK (uncertainty BETWEEN 0 AND 1),
+                model_version TEXT,
+                score_source TEXT CHECK (score_source IN ('SIMULATED', 'MODEL')),
+                review_decision TEXT CHECK (review_decision IN ('CONFIRMED_TOXIC', 'NOT_TOXIC', 'NEEDS_REVIEW')),
+                reviewed_by TEXT REFERENCES users(id) ON DELETE RESTRICT,
+                reviewed_at TEXT,
+                review_notes TEXT
+            )
+        """)
+        connection.execute("""
+            INSERT INTO comments(sequence, comment_id, video_id, text, status, assignee_id,
+                risk_score, uncertainty, model_version, score_source)
+            SELECT sequence, comment_id, video_id, text, status, assignee_id,
+                risk_score, uncertainty, model_version, score_source
+            FROM comments_legacy
+        """)
+        connection.execute("DROP TABLE comments_legacy")
+        connection.execute("CREATE INDEX comments_status_order ON comments(status, sequence)")
+        connection.execute("CREATE INDEX comments_queue ON comments(status, risk_score DESC, sequence ASC)")
 
     def _create_auth_schema(self, connection: sqlite3.Connection) -> None:
         connection.execute("""

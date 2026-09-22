@@ -105,7 +105,7 @@ def test_auth_migration_keeps_existing_comments_and_users(tmp_path):
                            ("c1", "v1", "Synthetic existing comment"))
     database.initialize()
     with database.connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
         assert connection.execute("SELECT count(*) FROM users").fetchone()[0] == 1
         assert connection.execute("SELECT count(*) FROM comments").fetchone()[0] == 1
         assert connection.execute("SELECT count(*) FROM sessions").fetchone()[0] == 0

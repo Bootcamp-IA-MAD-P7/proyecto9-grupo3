@@ -151,3 +151,20 @@ priorizar revisión humana y `uncertainty` expresa ambigüedad del score; ningun
 es una decisión automática. El Transformer permanece fuera de producción.
 `SimulatedScorer` solo se usa como fallback local cuando falta el artefacto y sus
 valores no representan toxicidad real.
+## Contrato de revisiÃ³n humana
+
+El frontend obtiene el detalle con `GET /comments/{comment_id}` despuÃ©s de
+seleccionar la cola. Solo ese endpoint autorizado devuelve `text`; `GET
+/comments` devuelve la cola sin texto y conserva la seÃ±al del modelo.
+
+`POST /comments/{comment_id}/review` acepta `{"decision":"NEEDS_REVIEW","notes":"triage"}`
+para marcar `IN_REVIEW`, y despuÃ©s `{"decision":"CONFIRMED_TOXIC","notes":"Synthetic review note"}`
+para finalizar como `REVIEWED`. Moderadores y supervisores pueden consultar y
+revisar. Sin Bearer: `401`; rol insuficiente: `403`; ID inexistente: `404`;
+transiciÃ³n invÃ¡lida: `400`; comentario ya revisado: `409`; payload invÃ¡lido:
+`422`. La respuesta conserva usuario, fecha, decisiÃ³n y notas sin sobrescribir
+la predicciÃ³n del modelo.
+
+Swagger estÃ¡ en `/docs` y OpenAPI en `/openapi.json`. Configura CORS con
+`MODERATION_CORS_ORIGINS=["http://localhost:3000"]` en `.env`; vacÃ­o significa
+sin orÃ­genes cruzados. La migraciÃ³n SQLite actual es la versiÃ³n 4.
