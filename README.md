@@ -1,5 +1,3 @@
-<div align="center">
-
 # Moderación asistida de comentarios
 
 ### Priorización de revisión humana mediante NLP y Machine Learning
@@ -11,37 +9,30 @@
 ![Approach](https://img.shields.io/badge/approach-human--in--the--loop-0969DA)
 ![Demo](https://img.shields.io/badge/API_demo-verified-1F883D)
 
-Una API interna que ayuda a priorizar comentarios potencialmente tóxicos para su revisión humana, sin delegar en el modelo la decisión final de moderación.
+## Qué es
 
-</div>
+Es una aplicación de moderación asistida para organizar comentarios y ayudar a una persona moderadora a decidir cuáles revisar primero. Calcula una puntuación de riesgo orientativa, muestra una cola priorizada y permite consultar el texto completo solo a usuarios autenticados y autorizados.
 
----
+Está pensada para equipos de moderación que necesitan revisar muchos comentarios de forma ordenada y trazable. El MVP trabaja con comentarios en inglés y utiliza `IsToxic` como referencia de alcance; esta etiqueta no cubre por sí sola gravedad, violencia, discurso de odio ni todas las políticas de una plataforma.
 
-## Problema
+## Qué problema resuelve
 
-La revisión de comentarios en orden de llegada puede retrasar casos que requieren atención prioritaria. Este proyecto explora si una señal de riesgo estimado de toxicidad puede ayudar a una persona moderadora a organizar su trabajo y decidir qué comentario revisar primero.
+Revisar comentarios solo por orden de llegada puede retrasar los casos que necesitan atención. El sistema usa una señal estimada para ordenar la cola y ayudar a la persona moderadora a priorizar su trabajo.
 
-El MVP trabaja con comentarios en inglés y con la etiqueta `IsToxic`. Esta etiqueta sirve como señal de toxicidad para el alcance del proyecto; no mide por sí sola gravedad, violencia, discurso de odio ni cumplimiento completo de las políticas de YouTube.
+## Qué hace y qué no hace
 
-## Propuesta de valor
+Hace lo siguiente:
 
-El sistema permite:
+- Importa y valida lotes de comentarios.
+- Calcula riesgo e incertidumbre y ordena una cola pendiente.
+- Oculta el texto completo en la cola y lo muestra solo en el detalle autorizado.
+- Permite registrar `NEEDS_REVIEW`, `CONFIRMED_TOXIC` o `NOT_TOXIC`, con notas opcionales.
+- Guarda usuario, fecha, estado y decisión de la revisión.
+- Aplica autenticación y roles `MODERATOR` y `SUPERVISOR`.
 
-- Importar y validar lotes de comentarios.
-- Autenticar usuarios y aplicar permisos por rol.
-- Asignar una señal de riesgo para ordenar una cola.
-- Consultar la cola de forma paginada sin devolver el texto.
-- Mantener la decisión final bajo control humano.
+No elimina, bloquea, denuncia ni sanciona comentarios; no se conecta a YouTube; no funciona en tiempo real; no clasifica sentimientos ni interpreta automáticamente políticas externas. La puntuación no es una decisión automática ni una certeza: solo sirve para priorizar y la decisión final siempre la toma una persona moderadora.
 
-El sistema no:
-
-- Elimina, bloquea, denuncia ni sanciona comentarios.
-- Se conecta a YouTube ni opera en tiempo real.
-- Clasifica sentimiento.
-- Interpreta automáticamente políticas de moderación.
-- Presenta una puntuación como una certeza.
-
-## Flujo del MVP
+## Cómo funciona
 
 ```mermaid
 flowchart TD
@@ -55,73 +46,27 @@ flowchart TD
     C -. "Fallback local" .-> H[SimulatedScorer]
 ```
 
-> La API usa Logistic + TF-IDF cuando encuentra el artefacto validado. `SimulatedScorer` solo se conserva como fallback local cuando falta el artefacto y no representa toxicidad real.
+1. `SUPERVISOR` importa un lote.
+2. La API valida y puntúa cada comentario.
+3. La cola devuelve los pendientes sin texto.
+4. La persona moderadora consulta el detalle autorizado.
+5. Registra una decisión humana y, opcionalmente, una nota.
 
-## Estado del proyecto
+## Ejecutar con Docker
 
-| Área                                | Estado        | Evidencia                                                          |
-| ----------------------------------- | ------------- | ------------------------------------------------------------------ |
-| Problema, alcance y límites del MVP | Implementado  | [Visión de producto](docs/product-vision.md)                       |
-| API FastAPI                         | Implementada  | `backend/app/`                                                     |
-| Persistencia local                  | Implementada  | SQLite en `data/local/`                                            |
-| Autenticación y roles               | Implementados | `backend/app/auth/`                                                |
-| Importación y cola priorizada       | Implementadas | `backend/app/comments/`                                            |
-| Demo HTTP local                     | Verificada    | [Guía de carga y cola](docs/backend/04-carga-y-cola-priorizada.md) |
-| Evaluación de modelos               | Implementada  | [Guía del ensemble](docs/model/ensemble.md)                        |
-| Modelo clásico candidato            | Seleccionado  | Logistic Regression + TF-IDF                                       |
-| Inferencia real en la API           | Implementada  | `LogisticScorer`, versión `logistic-tfidf-v1`                      |
-| Despliegue                          | Pendiente     | Posterior al vertical local completo                               |
-
-## Demo funcional de la API
-
-La API local está verificada con comentarios sintéticos.
-
-| Comprobación                      | Resultado                    |
-| --------------------------------- | ---------------------------- |
-| `GET /health`                     | `200`                        |
-| Login de `supervisor`             | `200` y rol `SUPERVISOR`     |
-| Importación de tres comentarios   | `201`                        |
-| Cola paginada                     | `200`, con páginas `2 + 1`   |
-| Login de `moderator`              | `200` y rol `MODERATOR`      |
-| Consulta de cola como `moderator` | `200`                        |
-| Importación como `moderator`      | `403`                        |
-| Repetición del lote               | `409`                        |
-| Texto expuesto en la cola         | No                           |
-| `score_source` / `model_version` | `MODEL` / `logistic-tfidf-v1` |
-
-El orden de la demo proviene de la probabilidad del pipeline Logistic + TF-IDF. `risk_score` es una señal para priorizar revisión humana, no una decisión automática ni una certeza de toxicidad.
-
-## Ejecutar la API local
-
-Requisitos: Python 3.12 o superior.
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -c backend/constraints.txt -e '.[dev]'
-.\.venv\Scripts\python.exe -m app.seed_demo_users
-.\.venv\Scripts\python.exe -m uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
-```
-
-Abre http://127.0.0.1:8000/docs para probar la API desde Swagger.
-
-El comando de usuarios solicita contraseñas locales para `moderator` y `supervisor`. No uses credenciales compartidas ni las guardes en Git.
-
-## Ejecutar con Docker Compose
-
-Requisitos: Docker Desktop con Compose v2.
-
-Desde la raÃ­z del repositorio:
+Requisitos: Docker Desktop con Docker Compose v2.
 
 ```bash
 docker compose up --build
 ```
 
-La aplicaciÃ³n queda disponible en:
-
 - Frontend: http://localhost:5173
 - Swagger: http://localhost:8000/docs
+- OpenAPI: http://localhost:8000/openapi.json
 
-La base SQLite se conserva en el volumen Docker `moderation-data`. El frontend se construye con `VITE_API_URL=http://localhost:8000` y el backend permite CORS desde `http://localhost:5173`. Los puertos y la URL se pueden configurar sin editar los Dockerfiles:
+Compose ejecuta FastAPI en `8000`, React servido por Nginx en `5173` y conserva SQLite en el volumen `moderation-data`. El backend permite CORS desde `http://localhost:5173`.
+
+Variables configurables:
 
 ```bash
 BACKEND_PORT=8000 FRONTEND_PORT=5173 VITE_API_URL=http://localhost:8000 docker compose up --build
@@ -136,165 +81,136 @@ $env:VITE_API_URL = "http://localhost:8000"
 docker compose up --build
 ```
 
-### Crear usuarios demo
+### Usuarios demo y prueba de la demo
 
-Con los servicios levantados, ejecuta el comando interactivo. Las contraseÃ±as se solicitan de forma oculta y no se escriben en el repositorio:
+Con los contenedores levantados, crea los usuarios. El comando solicita las contraseñas de forma oculta y no las guarda en Git:
 
 ```bash
 docker compose exec backend python -m app.seed_demo_users
 ```
 
-TambiÃ©n se pueden proporcionar temporalmente mediante `MODERATION_DEMO_MODERATOR_PASSWORD` y `MODERATION_DEMO_SUPERVISOR_PASSWORD`; no las aÃ±adas a `docker-compose.yml` ni a un archivo `.env` versionado.
+Los usuarios son `moderator` (`MODERATOR`) y `supervisor` (`SUPERVISOR`). Si ya existen, sus credenciales se conservan.
 
-### Importar comentarios sintÃ©ticos
-
-1. Abre Swagger en http://localhost:8000/docs.
-2. Ejecuta `POST /auth/login` con el usuario `supervisor` y la contraseÃ±a local elegida.
-3. Pulsa **Authorize** y pega el `access_token` como `Bearer <token>`.
-4. Ejecuta `POST /comments/import` con un lote como este:
+Para importar comentarios sintéticos, abre Swagger, ejecuta `POST /auth/login` con `supervisor`, pulsa **Authorize** y pega `Bearer <access_token>`. Después ejecuta `POST /comments/import` con:
 
 ```json
 {
   "items": [
-    {
-      "comment_id": "docker-demo-1",
-      "video_id": "video-demo",
-      "text": "This is a synthetic comment for the moderation queue."
-    },
-    {
-      "comment_id": "docker-demo-2",
-      "video_id": "video-demo",
-      "text": "This synthetic comment contains an insulting phrase for review."
-    }
+    {"comment_id": "docker-demo-1", "video_id": "video-demo", "text": "This is a synthetic comment for the moderation queue."},
+    {"comment_id": "docker-demo-2", "video_id": "video-demo", "text": "This synthetic comment contains an insulting phrase for review."}
   ]
 }
 ```
 
-El modelo simulado puede utilizarse en la demo si no existe el artefacto Logistic + TF-IDF; sus puntuaciones sirven solo para ordenar la cola y no representan una predicciÃ³n real.
+Después inicia sesión en el frontend, consulta un detalle y registra una decisión humana.
 
-## Modelos evaluados
+## Desarrollo local sin Docker
 
-Los modelos se compararon sobre un split común por `VideoId`. El threshold se seleccionó únicamente con validation; el conjunto de test no se utilizó para seleccionar modelo, pesos ni threshold.
+### Backend
 
-| Modelo                       | F1 validation | PR-AUC validation | Brier validation | Estado                            |
-| ---------------------------- | ------------: | ----------------: | ---------------: | --------------------------------- |
-| Logistic Regression + TF-IDF |        0,7306 |            0,7793 |           0,2166 | Candidato productivo seleccionado |
-| SVM + TF-IDF                 |        0,7122 |            0,7398 |           0,2475 | Evaluado                          |
-| Transformer DistilBERT       |        0,7734 |            0,8767 |           0,2060 | Experimento; fuera de producción  |
+Requisitos: Python 3.12+.
 
-También se evaluaron combinaciones Logistic/SVM con pesos `100/0`, `75/25`, `50/50`, `25/75` y `0/100`.
-
-La mejor combinación fue `75/25`, con F1 `0,7226` y Brier `0,2208`. No mejoró simultáneamente F1 y calibración frente a Logistic individual.
-
-### Decisión de modelo
-
-Se selecciona **Logistic Regression + TF-IDF** como candidato inicial para la inferencia productiva porque fue la mejor alternativa clásica evaluada y mantiene una complejidad operativa menor.
-
-La API ya conecta el artefacto validado mediante `LogisticScorer`; si el artefacto
-no está disponible, el fallback simulado solo se permite en demos/tests locales.
-
-La inferencia productiva expone una interfaz de texto nuevo:
-
-```python
-score_comment(text: str) -> Score
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -c backend/constraints.txt -e ".[dev]"
+.\.venv\Scripts\python.exe -m app.seed_demo_users
+.\.venv\Scripts\python.exe -m uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
 ```
 
-El artefacto se carga una sola vez y contiene:
+Swagger: http://127.0.0.1:8000/docs. En un `.env` local e ignorado por Git puede definirse `MODERATION_CORS_ORIGINS=["http://localhost:5173"]`.
 
-1. El vectorizador y el clasificador Logistic empaquetados.
-2. Preprocesamiento reproducible y metadatos con hash.
-3. Threshold seleccionado únicamente con validation; test cerrado.
-4. `uncertainty` calculada como cercanía de la probabilidad a 0,5.
+### Frontend
 
-## Limitaciones del Transformer
+En `frontend/.env` define `VITE_API_URL=http://127.0.0.1:8000` y ejecuta:
 
-El Transformer DistilBERT funcionó como experimento de entrenamiento y evaluación, pero no se seleccionó para producción debido a una señal clara de overfitting.
-
-| Ejecución                       | F1 train | F1 validation |      Gap |
-| ------------------------------- | -------: | ------------: | -------: |
-| Línea base                      |   0,9639 |        0,7888 | 17,51 pp |
-| `weight_decay` + early stopping |   0,9640 |        0,7734 | 19,06 pp |
-
-La regularización probada no mejoró el resultado y aumentó el gap. El conjunto de test permaneció cerrado, por lo que no se declara cumplido el requisito de una diferencia train-test inferior al 5 %.
-
-El Transformer queda documentado como experimento evaluado y no debe presentarse como modelo productivo de la demo.
-
-## Validación
-
-La última ejecución registrada del bloque de modelos fue:
-
-```text
-143 passed, 2 warnings, 2 subtests passed
+```powershell
+cd frontend
+npm install
+npm run dev -- --host localhost --port 5173
+npm run build
+npm run lint
 ```
 
-Comprobaciones adicionales:
+## Tecnologías
+
+Python 3.12+, FastAPI, Uvicorn, Pydantic Settings, SQLite, `pwdlib`/Argon2, React, TypeScript, Vite, Nginx, Docker Compose, scikit-learn, Joblib y Pytest.
+
+## Modelo
+
+El candidato productivo es Logistic Regression + TF-IDF. Cuando existe el artefacto validado, la API usa `model_version=logistic-tfidf-v1` y `score_source=MODEL`. `risk_score` es una probabilidad estimada y `uncertainty` mide la cercanía a `0,5`.
+
+Si falta el artefacto, `SimulatedScorer` está permitido en demos y tests locales: usa `simulated-v1` y `SIMULATED`. Es determinista, pero no representa una predicción real de toxicidad. También se evaluaron SVM + TF-IDF y DistilBERT; el Transformer queda como experimento, fuera de producción.
+
+## Endpoints principales
+
+Swagger: http://127.0.0.1:8000/docs. Los endpoints protegidos usan `Authorization: Bearer <access_token>`.
+
+| Endpoint | Permiso | Propósito |
+| --- | --- | --- |
+| `GET /health` | Público | Disponibilidad |
+| `POST /auth/login` | Público | Crear sesión |
+| `GET /auth/me` | Autenticado | Usuario actual |
+| `POST /auth/logout` | Autenticado | Revocar sesión |
+| `POST /comments/import` | `SUPERVISOR` | Importar lote puntuado |
+| `GET /comments` | `MODERATOR`, `SUPERVISOR` | Cola sin texto |
+| `GET /comments/{comment_id}` | `MODERATOR`, `SUPERVISOR` | Detalle autorizado con texto |
+| `POST /comments/{comment_id}/review` | `MODERATOR`, `SUPERVISOR` | Registrar revisión humana |
+
+Estados: `PENDING`, `IN_REVIEW`, `REVIEWED`. Decisiones: `NEEDS_REVIEW`, `CONFIRMED_TOXIC`, `NOT_TOXIC`.
+
+```json
+{"decision": "CONFIRMED_TOXIC", "notes": "Synthetic review note"}
+```
+
+`NEEDS_REVIEW` mueve `PENDING` a `IN_REVIEW`; una decisión final mueve `IN_REVIEW` a `REVIEWED`.
+
+## Privacidad y seguridad
+
+- La cola no devuelve el texto completo; el detalle requiere autenticación y rol autorizado.
+- Las contraseñas se almacenan con hashes Argon2 y nunca en texto plano.
+- Las sesiones del frontend viven en memoria, no en `localStorage` ni `sessionStorage`.
+- `.env`, credenciales, SQLite, datos locales y artefactos de modelos están excluidos de Git.
+- CORS se limita al origen del frontend.
+- Las revisiones quedan asociadas a usuario y fecha.
+- Las notas no deben incluir credenciales ni datos sensibles.
+
+## Estado y limitaciones
+
+El vertical local está implementado: API con autenticación, roles, SQLite, cola y revisiones; frontend React/Vite conectado; Docker Compose; volumen SQLite; fallback local; y pruebas automatizadas.
+
+La validación actual incluye `150 passed`, `npm run build`, `npm run lint`, `docker compose config` y `git diff --check`.
+
+Limitaciones: SQLite y el fallback simulado no son soluciones de producción; el modelo necesita su artefacto validado; no hay integración externa ni acciones automáticas; faltan HTTPS, gestión de secretos, observabilidad, copias de seguridad, retención y controles operativos. La accesibilidad requiere auditoría manual.
 
 ```bash
 python -m compileall -q backend/app src
 git diff --check
 ```
 
-## Estructura relevante
+## Estructura y documentación
 
 ```text
 backend/app/                 API FastAPI, autenticación, comentarios y base de datos
-backend/tests/               Tests de la API y del flujo de comentarios
-src/moderation/              Código de modelos y evaluación
-scripts/                     Entrenamiento y comparación de modelos
-docs/backend/                Documentación de la API y la demo
-docs/model/                  Documentación de modelos, métricas y limitaciones
+backend/tests/               Tests de la API y revisiones
+frontend/src/                Aplicación React/Vite
+src/moderation/              Modelos y evaluación
+scripts/                     Entrenamiento y comparación
+docs/backend/                Documentación de API y demo
+docs/model/                  Documentación de modelos y métricas
 data/splits/                 Split común versionado
 configs/                     Configuraciones de evaluación
 ```
 
-El dataset original, los artefactos locales, las bases SQLite, las credenciales y los archivos `.env` no se versionan.
-
-## Documentación
-
-* [Visión de producto](docs/product-vision.md)
-* [Discovery](docs/product/DISCOVERY.md)
-* [Primer endpoint](docs/backend/01-primer-endpoint.md)
-* [Persistencia](docs/backend/02-base-de-datos.md)
-* [Autenticación y permisos](docs/backend/03-autenticacion-y-permisos.md)
-* [Carga y cola priorizada](docs/backend/04-carga-y-cola-priorizada.md)
-* [Logistic + TF-IDF](docs/model/logistic-tfidf.md)
-* [Ensemble](docs/model/ensemble.md)
-* [Transformer](docs/model/transformer.md)
+- [Visión de producto](docs/product-vision.md)
+- [Discovery](docs/product/DISCOVERY.md)
+- [Primer endpoint](docs/backend/01-primer-endpoint.md)
+- [Persistencia](docs/backend/02-base-de-datos.md)
+- [Autenticación y permisos](docs/backend/03-autenticacion-y-permisos.md)
+- [Carga y cola priorizada](docs/backend/04-carga-y-cola-priorizada.md)
+- [Logistic + TF-IDF](docs/model/logistic-tfidf.md)
+- [Ensemble](docs/model/ensemble.md)
+- [Transformer](docs/model/transformer.md)
 
 ## Equipo
 
 Proyecto desarrollado por **Fernanda**, **Gabriela** y **Arnaldo** durante el bootcamp de Inteligencia Artificial de Factoría F5.
-
-El objetivo no es únicamente obtener una métrica alta: buscamos entender el problema, evaluar alternativas, medir resultados, reconocer limitaciones y construir una solución que mantenga las decisiones de moderación bajo control humano.
-
-```
-## Contrato de API para frontend
-
-Swagger: `http://127.0.0.1:8000/docs`. OpenAPI: `http://127.0.0.1:8000/openapi.json`.
-Los endpoints protegidos usan `Authorization: Bearer <access_token>`.
-
-| Endpoint | Permiso | PropÃ³sito |
-| --- | --- | --- |
-| `GET /health` | pÃºblico | Disponibilidad |
-| `POST /auth/login` | pÃºblico | Crear sesiÃ³n |
-| `POST /auth/logout` | autenticado | Revocar sesiÃ³n |
-| `POST /comments/import` | `SUPERVISOR` | Importar lote puntuado |
-| `GET /comments` | `MODERATOR`, `SUPERVISOR` | Cola sin `text` |
-| `GET /comments/{comment_id}` | `MODERATOR`, `SUPERVISOR` | Detalle autorizado con `text` |
-| `POST /comments/{comment_id}/review` | `MODERATOR`, `SUPERVISOR` | Registrar revisiÃ³n humana |
-
-Estados: `PENDING`, `IN_REVIEW`, `REVIEWED`. Decisiones: `NEEDS_REVIEW`,
-`CONFIRMED_TOXIC`, `NOT_TOXIC`. `NEEDS_REVIEW` mueve `PENDING` a `IN_REVIEW`;
-una decisiÃ³n final mueve `IN_REVIEW` a `REVIEWED`.
-
-```json
-{"decision":"CONFIRMED_TOXIC","notes":"Synthetic review note"}
-```
-
-La respuesta final incluye `comment_id`, `status`, `decision`, `reviewed_by` y
-`reviewed_at`. `risk_score`, `uncertainty`, `model_version` y `score_source`
-del modelo se conservan separados. Los errores esperados son `401`, `403`,
-`404`, `400`, `409` y `422`. Para CORS local define en `.env`
-`MODERATION_CORS_ORIGINS=["http://localhost:3000"]`; no se permiten orÃ­genes
-arbitrarios. Limitaciones: SQLite local, paginaciÃ³n por desplazamiento y sin
-retenciÃ³n/cifrado operativo de producciÃ³n; el Transformer sigue fuera de producciÃ³n.
