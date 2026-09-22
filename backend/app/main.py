@@ -21,11 +21,23 @@ from app.health import router as health_router
 
 def create_app() -> FastAPI:
     settings = Settings()
-    database = Database(settings.database_path)
+    database = Database(settings.database_url or settings.database_path)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         database.initialize()
+        moderator_password = settings.demo_moderator_password
+        supervisor_password = settings.demo_supervisor_password
+        if bool(moderator_password) != bool(supervisor_password):
+            raise RuntimeError("Both demo user passwords must be configured together")
+        if moderator_password and supervisor_password:
+            from app.seed_demo_users import seed_demo_users
+
+            seed_demo_users(
+                database,
+                moderator_password.get_secret_value(),
+                supervisor_password.get_secret_value(),
+            )
         yield
 
     app = FastAPI(
@@ -62,3 +74,8 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(comments_router)
     return app
+
+
+# Supported FastAPI entrypoint for Vercel Services. Tests and local tooling can
+# continue to call create_app() for an isolated application instance.
+app = create_app()
