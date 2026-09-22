@@ -202,3 +202,33 @@ Proyecto desarrollado por **Fernanda**, **Gabriela** y **Arnaldo** durante el bo
 El objetivo no es únicamente obtener una métrica alta: buscamos entender el problema, evaluar alternativas, medir resultados, reconocer limitaciones y construir una solución que mantenga las decisiones de moderación bajo control humano.
 
 ```
+## Contrato de API para frontend
+
+Swagger: `http://127.0.0.1:8000/docs`. OpenAPI: `http://127.0.0.1:8000/openapi.json`.
+Los endpoints protegidos usan `Authorization: Bearer <access_token>`.
+
+| Endpoint | Permiso | PropÃ³sito |
+| --- | --- | --- |
+| `GET /health` | pÃºblico | Disponibilidad |
+| `POST /auth/login` | pÃºblico | Crear sesiÃ³n |
+| `POST /auth/logout` | autenticado | Revocar sesiÃ³n |
+| `POST /comments/import` | `SUPERVISOR` | Importar lote puntuado |
+| `GET /comments` | `MODERATOR`, `SUPERVISOR` | Cola sin `text` |
+| `GET /comments/{comment_id}` | `MODERATOR`, `SUPERVISOR` | Detalle autorizado con `text` |
+| `POST /comments/{comment_id}/review` | `MODERATOR`, `SUPERVISOR` | Registrar revisiÃ³n humana |
+
+Estados: `PENDING`, `IN_REVIEW`, `REVIEWED`. Decisiones: `NEEDS_REVIEW`,
+`CONFIRMED_TOXIC`, `NOT_TOXIC`. `NEEDS_REVIEW` mueve `PENDING` a `IN_REVIEW`;
+una decisiÃ³n final mueve `IN_REVIEW` a `REVIEWED`.
+
+```json
+{"decision":"CONFIRMED_TOXIC","notes":"Synthetic review note"}
+```
+
+La respuesta final incluye `comment_id`, `status`, `decision`, `reviewed_by` y
+`reviewed_at`. `risk_score`, `uncertainty`, `model_version` y `score_source`
+del modelo se conservan separados. Los errores esperados son `401`, `403`,
+`404`, `400`, `409` y `422`. Para CORS local define en `.env`
+`MODERATION_CORS_ORIGINS=["http://localhost:3000"]`; no se permiten orÃ­genes
+arbitrarios. Limitaciones: SQLite local, paginaciÃ³n por desplazamiento y sin
+retenciÃ³n/cifrado operativo de producciÃ³n; el Transformer sigue fuera de producciÃ³n.

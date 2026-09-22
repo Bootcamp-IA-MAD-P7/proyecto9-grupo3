@@ -8,7 +8,9 @@ from app.auth.models import Role
 
 
 class LoginRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"example": {
+        "username": "moderator", "password": "your-local-password"
+    }})
 
     username: Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=1, max_length=64)]
     password: SecretStr = Field(min_length=1, max_length=1024)

@@ -14,7 +14,9 @@ Auth = Annotated[AuthService, Depends(get_auth_service)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-@router.post("/login", response_model=LoginResponse, responses={401: {"description": "Invalid credentials"}, 429: {"description": "Too many attempts"}})
+@router.post("/login", response_model=LoginResponse, summary="Create an authenticated session",
+             description="Authenticate a seeded moderator or supervisor and return a Bearer token.",
+             responses={401: {"description": "Invalid credentials"}, 429: {"description": "Too many attempts"}})
 def login(body: LoginRequest, service: Auth) -> LoginResponse:
     try:
         token, user = service.login(body.username, body.password.get_secret_value())
@@ -29,12 +31,14 @@ def login(body: LoginRequest, service: Auth) -> LoginResponse:
     )
 
 
-@router.get("/me", response_model=PublicUser, responses={401: {"description": "Invalid session"}})
+@router.get("/me", response_model=PublicUser, summary="Get the current user",
+            responses={401: {"description": "Invalid session"}})
 def me(user: CurrentUser) -> PublicUser:
     return PublicUser.model_validate(user)
 
 
-@router.post("/logout", status_code=204, responses={401: {"description": "Invalid session"}})
+@router.post("/logout", status_code=204, summary="Revoke the current session",
+             responses={401: {"description": "Invalid session"}})
 def logout(user: CurrentUser, token: Annotated[str, Depends(get_bearer_token)], service: Auth) -> Response:
     service.logout(token)
     return Response(status_code=204)

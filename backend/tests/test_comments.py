@@ -129,10 +129,57 @@ def test_version_two_migration_preserves_users_sessions_and_comments(tmp_path):
                            ("legacy", "v1", "Synthetic existing comment"))
     db.initialize()
     with db.connect() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
         assert connection.execute("SELECT count(*) FROM users").fetchone()[0] == user_count
         assert connection.execute("SELECT count(*) FROM sessions").fetchone()[0] == 1
         row = connection.execute("SELECT comment_id,risk_score,model_version,score_source FROM comments").fetchone()
         assert row["comment_id"] == "legacy"
         assert 0 <= row["risk_score"] <= 1
         assert (row["model_version"], row["score_source"]) == ("simulated-v1", "SIMULATED")
+
+
+def test_human_review_detail_transitions_and_traceability(client):
+    supervisor = headers(client)
+    moderator = headers(client, "moderator")
+    assert client.post("/comments/import", json={"items": [item("review-1", "Private review text")]},
+                       headers=supervisor).status_code == 201
+    detail = client.get("/comments/review-1", headers=moderator)
+    assert detail.status_code == 200
+    assert detail.json()["text"] == "Private review text"
+    original = {key: detail.json()[key] for key in ("risk_score", "model_version", "score_source")}
+    started = client.post("/comments/review-1/review", json={"decision": "NEEDS_REVIEW", "notes": "triage"},
+                          headers=moderator)
+    assert started.status_code == 200
+    assert started.json()["status"] == "IN_REVIEW"
+    assert started.json()["reviewed_by"] == "moderator"
+    finalized = client.post("/comments/review-1/review",
+                            json={"decision": "CONFIRMED_TOXIC", "notes": "Synthetic review note"},
+                            headers=moderator)
+    assert finalized.status_code == 200
+    assert finalized.json()["status"] == "REVIEWED"
+    assert finalized.json()["decision"] == "CONFIRMED_TOXIC"
+    assert client.post("/comments/review-1/review", json={"decision": "NOT_TOXIC"},
+                       headers=moderator).status_code == 409
+    assert client.get("/comments", headers=moderator).json()["items"] == []
+    with client.app.state.database.connect() as connection:
+        row = connection.execute("""
+            SELECT review_decision, reviewed_by, reviewed_at, review_notes,
+                   risk_score, model_version, score_source
+            FROM comments WHERE comment_id='review-1'
+        """).fetchone()
+    assert row["review_decision"] == "CONFIRMED_TOXIC"
+    with client.app.state.database.connect() as connection:
+        moderator_id = connection.execute("SELECT id FROM users WHERE username='moderator'").fetchone()[0]
+    assert row["reviewed_by"] == moderator_id
+    assert row["reviewed_at"]
+    assert row["review_notes"] == "Synthetic review note"
+    assert {key: row[key] for key in ("risk_score", "model_version", "score_source")} == original
+
+
+def test_human_review_permissions_not_found_and_validation(client):
+    assert client.get("/comments/missing", headers={}).status_code == 401
+    assert client.get("/comments/missing", headers=headers(client)).status_code == 404
+    assert client.post("/comments/missing/review", json={"decision": "NOT_TOXIC"},
+                       headers=headers(client, "moderator")).status_code == 404
+    assert client.post("/comments/missing/review", json={"decision": "BAD"},
+                       headers=headers(client, "moderator")).status_code == 422
