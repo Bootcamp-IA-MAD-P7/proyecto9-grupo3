@@ -5,8 +5,9 @@ recibe `Text`; `CommentId` alinea las salidas y `VideoId` valida el split. Las
 etiquetas secundarias nunca se tokenizan ni entran al modelo.
 
 El CSV esperado es `data/raw/youtoxic_english_1000.csv`. Es un insumo local y no
-se versiona ni se descarga desde este repositorio. Si se dispone de una copia
-autorizada en otra ubicación, se puede pasar con `--dataset RUTA_LOCAL.csv`.
+se versiona ni se descarga desde este repositorio. Una copia autorizada puede
+tener un nombre alternativo, como `data/raw/youtoxic_english_1000 (1).csv`, y
+se pasa explícitamente con `--dataset RUTA_LOCAL.csv`.
 No se deben usar datasets de ejemplo de scikit-learn ni generar métricas sin
 ejecutar el pipeline con el dataset del proyecto.
 
@@ -22,14 +23,59 @@ el umbral más alto que alcanza al menos 80 % de recall. Por defecto no abre las
 .\.venv\Scripts\python.exe scripts/train_transformer.py
 ```
 
-Si falta el CSV por defecto, el comando informa de la ruta exacta y recuerda
-cómo indicar una ruta alternativa con `--dataset`; no crea resultados ficticios.
+Si falta el CSV por defecto y no se indica una copia con nombre alternativo, el
+comando informa de la ruta esperada y recuerda cómo indicar una ruta alternativa
+con `--dataset`; no crea resultados ficticios.
 Hasta conectar un artefacto entrenado y validado, la API sigue usando
 `SimulatedScorer` para el demo. Sus puntuaciones solo prueban el contrato de la
 cola y no representan toxicidad.
 
+### Auditoría de overfitting
+
+El Transformer está implementado y la línea base fue entrenada con el dataset
+local `data/raw/youtoxic_english_1000 (1).csv`. Sus métricas reales fueron:
+
+| Métrica | Train | Validation |
+| --- | ---: | ---: |
+| F1 | 0,9639 | 0,7888 |
+| Precision | 0,9524 | 0,7734 |
+| Recall | 0,9756 | 0,8049 |
+| PR-AUC | 0,9933 | 0,8815 |
+| Brier score | 0,0231 | 0,1859 |
+
+El gap F1 train-validation fue de **17,51 puntos porcentuales**, por lo que hay
+una señal clara de overfitting. El requisito del briefing es una diferencia
+train-test inferior al 5 %, pero todavía no puede declararse cumplido: test está
+cerrado y no se ha medido en esta iteración.
+
+La primera mejora implementada añade `weight_decay=0.01`, evaluación de validation
+al final de cada época y early stopping con `early_stopping_patience=2`. Se
+conserva el estado con mejor F1 de validation. El F1 usado para detenerse emplea
+threshold fijo 0,5; una vez terminado el entrenamiento, el threshold operativo se
+selecciona de nuevo exclusivamente con validation. Test no participa en épocas,
+regularización, threshold ni pesos.
+
+La nueva ejecución regularizada produjo:
+
+| Métrica | Train nuevo | Validation nueva |
+| --- | ---: | ---: |
+| F1 | 0,9640 | 0,7734 |
+| Precision | 0,9488 | 0,7444 |
+| Recall | 0,9797 | 0,8049 |
+| PR-AUC | 0,9936 | 0,8767 |
+| Brier score | 0,0323 | 0,2060 |
+
+El nuevo gap F1 train-validation es de **19,06 puntos porcentuales**. Por tanto,
+`weight_decay` más early stopping no mejoraron la señal de overfitting en esta
+ejecución. El requisito train-test menor del 5 % no está demostrado ni cumplido
+para el Transformer y no se puede evaluar sin abrir test. El Transformer queda
+como experimento evaluado, no como modelo productivo principal para la demo.
+No se continuará con Optuna por falta de tiempo y porque primero hay que resolver
+el sobreajuste. Ni el CSV ni `data/local/transformer/` se versionan.
+
 La configuración reproducible usa semilla 42, longitud máxima 128, tres épocas,
-lotes de 16, tasa de aprendizaje `2e-5` y la revisión de DistilBERT
+lotes de 16, tasa de aprendizaje `2e-5`, `weight_decay=0.01`, paciencia de early
+stopping 2 y la revisión de DistilBERT
 `12040accade4e8a0f71eabdb258fecc2e7e948be`. El informe conserva además las
 versiones del runtime. Los artefactos locales se guardan en
 `data/local/transformer/`, que está excluido de Git:

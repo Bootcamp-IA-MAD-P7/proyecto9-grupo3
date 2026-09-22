@@ -106,11 +106,55 @@ disponible en otra ruta, indícala explícitamente:
 .\.venv\Scripts\python.exe scripts/train_transformer.py --dataset RUTA_LOCAL.csv
 ```
 
-Sin ese archivo, el comando termina con un mensaje claro y no genera métricas.
-No sustituyas el dataset del proyecto por datasets de ejemplo de scikit-learn.
+Si no existe el archivo esperado ni una copia autorizada con nombre alternativo,
+el comando termina con un mensaje claro y no genera métricas. En este entorno la
+copia local disponible es `data/raw/youtoxic_english_1000 (1).csv`; se ejecuta
+pasándola explícitamente con `--dataset`. No sustituyas el dataset del proyecto
+por datasets de ejemplo de scikit-learn.
 La guía completa del modelo está en [docs/model/transformer.md](docs/model/transformer.md);
 el test permanece cerrado salvo que se use `--final-test` con la configuración
 congelada requerida.
+
+## Estado real del Transformer
+
+El pipeline de DistilBERT está implementado y ya fue entrenado con el dataset
+local `data/raw/youtoxic_english_1000 (1).csv`. El threshold se selecciona
+exclusivamente con validation; test no se usa para ajustar hiperparámetros y
+permanece cerrado en esta auditoría.
+
+La línea base validada antes de la primera regularización fue:
+
+| Métrica | Train | Validation |
+| --- | ---: | ---: |
+| F1 | 0,9639 | 0,7888 |
+| Precision | 0,9524 | 0,7734 |
+| Recall | 0,9756 | 0,8049 |
+| PR-AUC | 0,9933 | 0,8815 |
+| Brier score | 0,0231 | 0,1859 |
+
+El gap F1 train-validation fue de **17,51 puntos porcentuales**, una señal clara
+de overfitting. La primera hipótesis de reducción (`weight_decay` 0,01 y early
+stopping por F1 de validation, con paciencia 2 y recuperación del mejor estado)
+ya fue ejecutada. La nueva ejecución produjo:
+
+| Métrica | Train nuevo | Validation nueva |
+| --- | ---: | ---: |
+| F1 | 0,9640 | 0,7734 |
+| Precision | 0,9488 | 0,7444 |
+| Recall | 0,9797 | 0,8049 |
+| PR-AUC | 0,9936 | 0,8767 |
+| Brier score | 0,0323 | 0,2060 |
+
+El nuevo gap es de **19,06 puntos porcentuales**: `weight_decay` más early
+stopping no mejoraron el overfitting en esta ejecución. El requisito train-test
+menor del 5 % no está demostrado ni cumplido para el Transformer porque test
+continúa cerrado. El Transformer queda como experimento evaluado y no se usará
+como modelo productivo principal en la demo. No se continuará con Optuna por
+falta de tiempo y porque primero hay que resolver el sobreajuste.
+
+El dataset y todos los artefactos de `data/local/` no se versionan. El siguiente
+El siguiente experimento deberá probar otra estrategia explicable y comparar
+train y validation; no se abrirá test hasta una evaluación final autorizada.
 
 ## El problema
 

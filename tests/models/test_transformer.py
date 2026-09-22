@@ -3,6 +3,7 @@ import pytest
 import torch
 from types import SimpleNamespace
 
+from src.moderation.models import transformer as transformer_module
 from src.moderation.models.transformer import (
     ToxicityDataset,
     _set_seed,
@@ -160,6 +161,45 @@ def test_training_and_prediction_use_real_torch_batches():
     assert not torch.equal(before, model.classifier.weight.detach())
     assert probabilities.shape == (2,)
     assert ((probabilities >= 0) & (probabilities <= 1)).all()
+
+
+def test_training_uses_weight_decay_early_stopping_and_best_validation_state(monkeypatch):
+    torch.manual_seed(42)
+    model = TinyClassifier()
+    dataset = TensorDataset()
+    snapshots = []
+    optimizer_options = {}
+
+    real_adamw = torch.optim.AdamW
+
+    def recording_adamw(parameters, **kwargs):
+        optimizer_options.update(kwargs)
+        return real_adamw(parameters, **kwargs)
+
+    def fake_validation(model, dataset, **kwargs):
+        snapshots.append({name: value.detach().clone() for name, value in model.state_dict().items()})
+        return torch.tensor([0.1, 0.9] if len(snapshots) == 1 else [0.9, 0.9]).numpy()
+
+    monkeypatch.setattr(transformer_module, "AdamW", recording_adamw)
+    monkeypatch.setattr(transformer_module, "predict_probabilities", fake_validation)
+
+    history = train_model(
+        model,
+        dataset,
+        epochs=5,
+        batch_size=2,
+        learning_rate=0.1,
+        device=torch.device("cpu"),
+        validation_dataset=dataset,
+        early_stopping_patience=1,
+        weight_decay=0.07,
+    )
+
+    assert train_model.__kwdefaults__["weight_decay"] == pytest.approx(0.01)
+    assert optimizer_options["weight_decay"] == pytest.approx(0.07)
+    assert len(history) == 2
+    assert len(snapshots) == 2
+    assert all(torch.equal(model.state_dict()[name], snapshots[0][name]) for name in snapshots[0])
 
 
 def test_run_transformer_keeps_test_sealed_by_default(tmp_path, monkeypatch):

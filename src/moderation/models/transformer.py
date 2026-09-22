@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+import copy
 from importlib.metadata import version
 import json
 from pathlib import Path
@@ -29,6 +30,8 @@ from src.moderation.models.logistic_tfidf import load_partitions, select_thresho
 
 PREDICTION_COLUMNS = ["CommentId", "IsToxic", "probability", "prediction"]
 DEFAULT_MODEL_REVISION = "12040accade4e8a0f71eabdb258fecc2e7e948be"
+DEFAULT_WEIGHT_DECAY = 0.01
+DEFAULT_EARLY_STOPPING_PATIENCE = 2
 
 
 class ToxicityDataset(Dataset):
@@ -100,12 +103,29 @@ def train_model(
     batch_size: int,
     learning_rate: float,
     device: torch.device,
+    validation_dataset: Dataset | None = None,
+    early_stopping_patience: int = DEFAULT_EARLY_STOPPING_PATIENCE,
+    weight_decay: float = DEFAULT_WEIGHT_DECAY,
+    validation_history: list[float] | None = None,
 ) -> list[float]:
-    """Fine-tune a sequence classifier and return mean loss per epoch."""
+    """Fine-tune a classifier with validation-F1 early stopping.
+
+    Validation monitoring uses a fixed 0.5 threshold. The production threshold
+    is selected separately after training using the complete validation split.
+    """
+    if early_stopping_patience < 0:
+        raise ValueError("early_stopping_patience must be non-negative")
+    if weight_decay < 0:
+        raise ValueError("weight_decay must be non-negative")
     model.to(device)
-    optimizer = AdamW(model.parameters(), lr=learning_rate)
+    optimizer = AdamW(
+        model.parameters(), lr=learning_rate, weight_decay=weight_decay
+    )
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     history = []
+    best_state = None
+    best_validation_f1 = -np.inf
+    epochs_without_improvement = 0
     for _ in range(epochs):
         model.train()
         losses = []
@@ -117,6 +137,36 @@ def train_model(
             optimizer.step()
             losses.append(float(output.loss.detach().cpu()))
         history.append(float(np.mean(losses)))
+        if validation_dataset is None:
+            continue
+        validation_probability = predict_probabilities(
+            model,
+            validation_dataset,
+            batch_size=batch_size,
+            device=device,
+        )
+        validation_labels = DataLoader(
+            validation_dataset, batch_size=batch_size, shuffle=False
+        )
+        validation_actual = np.concatenate(
+            [batch["labels"].cpu().numpy() for batch in validation_labels]
+        )
+        validation_prediction = (validation_probability >= 0.5).astype(int)
+        validation_f1 = float(
+            f1_score(validation_actual, validation_prediction, zero_division=0)
+        )
+        if validation_history is not None:
+            validation_history.append(validation_f1)
+        if validation_f1 > best_validation_f1:
+            best_validation_f1 = validation_f1
+            best_state = copy.deepcopy(model.state_dict())
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+            if epochs_without_improvement >= early_stopping_patience:
+                break
+    if best_state is not None:
+        model.load_state_dict(best_state)
     return history
 
 
@@ -168,6 +218,8 @@ def run_transformer(
     learning_rate: float = 2e-5,
     seed: int = 42,
     target_recall: float = 0.8,
+    weight_decay: float = DEFAULT_WEIGHT_DECAY,
+    early_stopping_patience: int = DEFAULT_EARLY_STOPPING_PATIENCE,
     final_test: bool = False,
     ensemble_config: str | Path | None = None,
 ) -> dict[str, object]:
@@ -197,6 +249,7 @@ def run_transformer(
         partitions["validation"], tokenizer, max_length=max_length
     )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    validation_history: list[float] = []
     loss_history = train_model(
         model,
         train_dataset,
@@ -204,6 +257,10 @@ def run_transformer(
         batch_size=batch_size,
         learning_rate=learning_rate,
         device=device,
+        validation_dataset=validation_dataset,
+        early_stopping_patience=early_stopping_patience,
+        weight_decay=weight_decay,
+        validation_history=validation_history,
     )
     validation_probability = predict_probabilities(
         model,
@@ -245,6 +302,9 @@ def run_transformer(
         "batch_size": batch_size,
         "max_length": max_length,
         "learning_rate": learning_rate,
+        "weight_decay": weight_decay,
+        "early_stopping_patience": early_stopping_patience,
+        "validation_f1_history": validation_history,
         "device": str(device),
         "train_loss": loss_history,
         "threshold": threshold,
