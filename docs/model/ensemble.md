@@ -35,6 +35,35 @@ ensemble mejora PR-AUC en aproximadamente 0,0007 y Brier score en 0,0077, pero
 produce una falsa alarma adicional. La mejora de ranking es pequeña; DistilBERT
 se conserva como control de referencia.
 
+## Estado de la auditoría de inferencia
+
+La implementación actual combina `DataFrame` de probabilidades ya calculadas.
+`scripts/run_ensemble.py` recibe tres archivos de predicciones y no ofrece una
+función `score_comment(text: str) -> Score` ni carga modelos para textos nuevos.
+Por tanto, el ensemble todavía no está preparado para inferencia productiva.
+
+Los artefactos Logistic y SVM se pudieron regenerar localmente desde el dataset
+autorizado y el manifiesto común. La comparación fair de validation reproduce:
+
+| Modelo | F1 | PR-AUC | Brier |
+| --- | ---: | ---: | ---: |
+| Logistic Regression | 0,7306 | 0,7793 | 0,2166 |
+| SVM calibrado | 0,7122 | 0,7398 | 0,2475 |
+| Transformer | 0,7734 | 0,8767 | 0,2060 |
+
+Entre los modelos clásicos, Logistic Regression es por ahora el candidato
+individual mejor respaldado. No existe todavía evidencia de una combinación
+Logistic+SVM que justifique escoger el ensemble clásico como configuración final.
+Los artefactos locales no se versionan.
+
+La configuración congelada sigue asignando `0,10` a Logistic, `0,00` a SVM y
+`0,90` a Transformer. No se han cambiado esos pesos: la configuración no refleja
+todavía la decisión productiva y los hashes de los tres archivos locales no
+coinciden con `configs/ensemble.json`. Antes de conectar inferencia hay que
+evaluar la combinación clásica, decidir el modelo, congelar artefactos compatibles
+y crear una capa de carga reutilizable. El Transformer queda fuera del modelo
+productivo por su overfitting documentado.
+
 ## Congelar la configuración en validación
 
 ```powershell

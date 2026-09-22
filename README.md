@@ -163,6 +163,17 @@ El dataset y todos los artefactos de `data/local/` no se versionan. El siguiente
 experimento deberá probar otra estrategia explicable y comparar train y validation;
 no se abrirá test hasta una evaluación final autorizada.
 
+## Estado del ensemble productivo
+
+El ensemble clásico es el candidato productivo, pero todavía no está listo para
+inferir textos nuevos: el código actual combina archivos de probabilidades
+precalculadas y no expone una capa `score_comment(text) -> Score`. Los artefactos
+Logistic y SVM se pueden regenerar localmente, y Logistic es por ahora el mejor
+candidato clásico individual en validation; aún falta evaluar una combinación
+Logistic+SVM y congelar una configuración compatible. No se han cambiado los
+pesos actuales, que todavía dan predominio al Transformer. El Transformer queda
+fuera del modelo productivo por el overfitting documentado.
+
 ## El problema
 
 Revisar comentarios en orden de llegada puede hacer que contenido potencialmente

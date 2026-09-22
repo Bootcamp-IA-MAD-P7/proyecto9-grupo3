@@ -56,6 +56,14 @@ El programa selecciona en validación el umbral más alto que alcanza al menos
 80 % de recall. Esta regla busca detectar cuatro de cada cinco positivos con la
 menor cola compatible con ese objetivo. El test no participa en la selección.
 
+En la auditoría actual, Logistic Regression es el mejor candidato clásico
+individual frente al SVM calibrado según la comparación fair de validation
+(F1 0,7306 frente a 0,7122; PR-AUC 0,7793 frente a 0,7398). El artefacto
+`logistic_tfidf.joblib` puede generarse localmente, pero todavía no existe una
+capa reutilizable de inferencia para textos nuevos ni una decisión respaldada
+sobre una combinación Logistic+SVM. El artefacto y sus predicciones permanecen
+fuera de Git.
+
 ## Evaluación final
 
 Cuando el equipo haya aceptado la configuración y la regla de recall, ejecutar
