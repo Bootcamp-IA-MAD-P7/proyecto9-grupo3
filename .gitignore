@@ -13,7 +13,10 @@ credentials.json
 service-account*.json
 secrets.json
 data/local/
+**/data/local/
 data/raw/
+.vercel/
+pytest-of-root/
 
 # Local tooling and recovery artifacts
 .ipynb_checkpoints/

@@ -115,6 +115,26 @@ docker compose down
 
 La base de datos SQLite se conserva en el volumen Docker `moderation-data`.
 
+## Desplegar en Vercel
+
+El repositorio usa Vercel Services para publicar Vite en `/` y FastAPI en
+`/api` dentro del mismo dominio. En producción, la persistencia debe usar
+Postgres; SQLite queda reservado para desarrollo local y tests.
+
+1. Importa el repositorio en Vercel y selecciona **Services** como Framework
+   Preset.
+2. Añade Neon desde Vercel Marketplace al proyecto. La integración inyecta
+   `DATABASE_URL` automáticamente.
+3. Configura como variables cifradas los dos secretos de bootstrap:
+   `MODERATION_DEMO_MODERATOR_PASSWORD` y
+   `MODERATION_DEMO_SUPERVISOR_PASSWORD`.
+4. Despliega desde la raíz del repositorio. `vercel.json` contiene las rutas y
+   límites de ambos servicios.
+
+El frontend usa `/api` por defecto, por lo que previews y producción no
+necesitan configurar CORS ni `VITE_API_URL`. El arranque de FastAPI crea el
+esquema de forma idempotente y conserva las credenciales ya existentes.
+
 ## Probar la demo
 
 La demo usa comentarios sintéticos. No descarga ni publica contenido en YouTube.
