@@ -42,8 +42,12 @@ class CommentRepository:
                      score.uncertainty, score.model_version, score.score_source)
                     for item, score in records
                 ])
-        except sqlite3.IntegrityError as error:
-            if "comments.comment_id" in str(error):
+        except Exception as error:
+            is_sqlite_duplicate = (
+                isinstance(error, sqlite3.IntegrityError)
+                and "comments.comment_id" in str(error)
+            )
+            if is_sqlite_duplicate or getattr(error, "sqlstate", None) == "23505":
                 raise DuplicateComment from None
             raise
 
@@ -51,8 +55,8 @@ class CommentRepository:
         with self.database.connect() as connection:
             connection.execute("BEGIN")
             total = connection.execute(
-                "SELECT count(*) FROM comments WHERE status=? AND risk_score IS NOT NULL", (status,)
-            ).fetchone()[0]
+                "SELECT count(*) AS total FROM comments WHERE status=? AND risk_score IS NOT NULL", (status,)
+            ).fetchone()["total"]
             rows = connection.execute("""
                 SELECT comment_id, video_id, risk_score, uncertainty, model_version, score_source, status
                 FROM comments WHERE status=? AND risk_score IS NOT NULL
@@ -75,8 +79,9 @@ class CommentRepository:
                notes: str | None) -> ReviewResponse:
         reviewed_at = datetime.now(timezone.utc)
         with self.database.connect() as connection:
+            lock = " FOR UPDATE" if self.database.is_postgres else ""
             row = connection.execute(
-                "SELECT status FROM comments WHERE comment_id=?", (comment_id,)
+                f"SELECT status FROM comments WHERE comment_id=?{lock}", (comment_id,)
             ).fetchone()
             if row is None:
                 raise CommentNotFound
@@ -88,13 +93,13 @@ class CommentRepository:
             if status not in {"PENDING", "IN_REVIEW"}:
                 raise InvalidReviewTransition
             next_status = "IN_REVIEW" if decision == "NEEDS_REVIEW" else "REVIEWED"
-            connection.execute("""
+            cursor = connection.execute("""
                 UPDATE comments
                 SET status=?, review_decision=?, reviewed_by=?, reviewed_at=?, review_notes=?
                 WHERE comment_id=? AND status=?
             """, (next_status, decision, user.id, reviewed_at.isoformat(), notes,
                   comment_id, status))
-            if connection.total_changes != 1:
+            if cursor.rowcount != 1:
                 raise ReviewConflict
         return ReviewResponse(comment_id=comment_id, status=next_status, decision=decision,
                               reviewed_by=user.username, reviewed_at=reviewed_at)

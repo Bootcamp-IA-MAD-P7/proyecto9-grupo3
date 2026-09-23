@@ -15,6 +15,8 @@ secrets.json
 data/local/
 backend/data/local/
 data/raw/
+.vercel/
+pytest-of-root/
 
 # Local tooling and recovery artifacts
 .ipynb_checkpoints/

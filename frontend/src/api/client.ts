@@ -5,8 +5,9 @@ export class ApiError extends Error {
 }
 function apiUrl(): string {
   const value = import.meta.env.VITE_API_URL?.trim();
-  if (!value) throw new ApiError(0, 'Falta configurar VITE_API_URL. Define la URL de la API y vuelve a cargar la aplicación.');
-  return value.replace(/\/$/, '');
+  // Vercel Services mounts FastAPI at /api on the same deployment. Local
+  // development can still override this with VITE_API_URL.
+  return value ? value.replace(/\/$/, '') : '/api';
 }
 async function request<T>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
   const headers = new Headers(options.headers); headers.set('Accept', 'application/json');

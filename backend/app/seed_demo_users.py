@@ -38,7 +38,11 @@ def main() -> None:
     if supervisor_password is None:
         supervisor_password = getpass.getpass("Password for supervisor (12+ characters): ")
     try:
-        seed_demo_users(Database(settings.database_path), moderator_password, supervisor_password)
+        seed_demo_users(
+            Database(settings.database_url or settings.database_path),
+            moderator_password,
+            supervisor_password,
+        )
     except ValueError as error:
         raise SystemExit(str(error)) from None
     print("Demo users ready: moderator, supervisor. Existing credentials were preserved.")

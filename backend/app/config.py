@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +16,10 @@ class Settings(BaseSettings):
 
     app_name: str = Field(default="Moderation API", min_length=1)
     docs_enabled: bool = True
+    database_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("MODERATION_DATABASE_URL", "DATABASE_URL"),
+    )
     database_path: Path = Path("data/local/moderation.db")
     model_artifact_path: Path = Path("data/local/logistic_tfidf/logistic_tfidf.joblib")
     model_metadata_path: Path | None = None

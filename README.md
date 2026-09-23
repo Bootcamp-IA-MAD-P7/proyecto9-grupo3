@@ -35,15 +35,12 @@ No elimina, bloquea, denuncia ni sanciona comentarios; no se conecta a YouTube; 
 ## Cómo funciona
 
 ```mermaid
-flowchart TD
-    A[Comentario en inglés] --> B[Validación de entrada]
-    B --> C[Puntuación de riesgo]
+flowchart LR
+    A[Comentarios] --> B[Validación]
+    B --> C[Estimación de riesgo]
     C --> D[Cola priorizada]
     D --> E[Revisión humana]
-    E --> F[Decisión de moderación]
-
-    C --> G[Logistic + TF-IDF]
-    C -. "Fallback local" .-> H[SimulatedScorer]
+    E --> F[Decisión registrada]
 ```
 
 1. `SUPERVISOR` importa un lote.
@@ -204,10 +201,7 @@ La validación actual incluye `150 passed`, `npm run build`, `npm run lint`, `do
 
 Limitaciones: SQLite y el fallback simulado no son soluciones de producción; el modelo necesita su artefacto validado; la demo pública no registra decisiones reales y no ejecuta acciones contra YouTube; faltan HTTPS terminado en infraestructura, gestión de secretos, observabilidad, copias de seguridad, retención y controles operativos. La accesibilidad requiere auditoría manual con lector de pantalla y teclado.
 
-```bash
-python -m compileall -q backend/app src
-git diff --check
-```
+Después:
 
 ## Estructura y documentación
 
@@ -234,6 +228,14 @@ configs/                     Configuraciones de evaluación
 - [Transformer](docs/model/transformer.md)
 - [Resumen de métricas para la presentación](docs/presentation-metrics.md)
 
-## Equipo
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `GET` | `/health` | Comprueba si la API está disponible. |
+| `POST` | `/auth/login` | Inicia una sesión. |
+| `POST` | `/auth/logout` | Cierra una sesión. |
+| `GET` | `/comments` | Consulta la cola priorizada. |
+| `GET` | `/comments/{id}` | Consulta el detalle autorizado. |
+| `POST` | `/comments/import` | Importa un lote de comentarios. |
+| `POST` | `/comments/{id}/review` | Registra una revisión humana. |
 
 Proyecto desarrollado por **Fernanda**, **Gabriela** y **Arnaldo** durante el bootcamp de Inteligencia Artificial de Factoría F5.

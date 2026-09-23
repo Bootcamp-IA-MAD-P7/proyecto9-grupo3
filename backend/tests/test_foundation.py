@@ -68,6 +68,17 @@ def test_app_title_uses_environment_configuration(monkeypatch):
         assert client.get("/openapi.json").json()["info"]["title"] == "Teaching API"
 
 
+@pytest.mark.parametrize("name", ["DATABASE_URL", "MODERATION_DATABASE_URL"])
+def test_postgres_url_uses_neon_compatible_environment_names(monkeypatch, name):
+    from app.main import create_app
+
+    url = "postgresql://user:secret@example.neon.tech/moderation?sslmode=require"
+    monkeypatch.setenv(name, url)
+    app = create_app()
+    assert app.state.database.is_postgres is True
+    assert app.state.database.url == url
+
+
 def test_invalid_configuration_fails_before_serving_requests(monkeypatch):
     from app.main import create_app
 
