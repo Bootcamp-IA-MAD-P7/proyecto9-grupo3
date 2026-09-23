@@ -18,6 +18,8 @@ export interface QueueItem {
 export interface QueuePage { items: QueueItem[]; page: number; page_size: number; total: number; has_next: boolean; }
 
 export interface CommentDetail extends QueueItem { text: string; }
+export interface PublicComment extends CommentDetail { author: string; published_at: string | null; likes: number; }
+export interface PublicYouTubeQueue { video_id: string; fetched_at: string; items: PublicComment[]; }
 export type ReviewDecision = 'NEEDS_REVIEW' | 'CONFIRMED_TOXIC' | 'NOT_TOXIC';
 export interface ReviewRequest { decision: ReviewDecision; notes?: string; }
 export interface ReviewResponse { comment_id: string; status: 'REVIEWED' | 'IN_REVIEW'; decision: ReviewDecision; reviewed_by: string; reviewed_at: string; }

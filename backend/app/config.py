@@ -28,5 +28,7 @@ class Settings(BaseSettings):
     login_max_attempts: int = Field(default=5, ge=1, le=100)
     login_window_seconds: int = Field(default=60, ge=1, le=3600)
     cors_origins: list[str] = Field(default_factory=list)
-    demo_moderator_password: SecretStr | None = None
-    demo_supervisor_password: SecretStr | None = None
+    youtube_api_key: str | None = Field(default=None, min_length=1)
+    youtube_max_results: int = Field(default=50, ge=1, le=100)
+    public_query_limit: int = Field(default=30, ge=1, le=300)
+    public_query_window_seconds: int = Field(default=60, ge=1, le=3600)

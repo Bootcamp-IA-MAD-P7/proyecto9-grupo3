@@ -17,6 +17,8 @@ from app.config import Settings
 from app.database import Database
 from app.errors import validation_error
 from app.health import router as health_router
+from app.public import router as public_router
+from app.youtube import YouTubeService
 
 
 def create_app() -> FastAPI:
@@ -58,14 +60,19 @@ def create_app() -> FastAPI:
             allow_headers=["Authorization", "Content-Type"],
         )
     app.state.database = database
+    app.state.settings = settings
     app.state.auth_service = AuthService(AuthRepository(database), settings)
     app.state.comment_service = CommentService(CommentRepository(database), select_scorer(settings))
+    app.state.youtube_service = YouTubeService(settings.youtube_api_key, app.state.comment_service.scorer, settings.youtube_max_results)
     app.add_exception_handler(RequestValidationError, validation_error)
 
     @app.middleware("http")
     async def prevent_auth_caching(request: Request, call_next):
         response = await call_next(request)
-        if request.url.path.startswith(("/auth/", "/comments")):
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "same-origin"
+        if request.url.path.startswith(("/auth/", "/comments", "/public/")):
             response.headers["Cache-Control"] = "no-store"
             response.headers["Pragma"] = "no-cache"
         return response
@@ -73,6 +80,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(comments_router)
+    app.include_router(public_router)
     return app
 
 

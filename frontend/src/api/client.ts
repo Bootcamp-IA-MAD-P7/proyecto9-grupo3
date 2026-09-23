@@ -1,4 +1,4 @@
-import type { CommentDetail, LoginResponse, PublicUser, QueuePage, ReviewRequest, ReviewResponse } from '../types/moderation';
+import type { CommentDetail, LoginResponse, PublicUser, PublicYouTubeQueue, QueuePage, ReviewRequest, ReviewResponse } from '../types/moderation';
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string) { super(message); this.name = 'ApiError'; }
@@ -23,3 +23,4 @@ export const logout = (token: string) => request<void>('/auth/logout', { method:
 export const loadQueue = (token: string) => request<QueuePage>('/comments?status=PENDING&page=1&page_size=20', {}, token);
 export const loadCommentDetail = (token: string, commentId: string) => request<CommentDetail>(`/comments/${encodeURIComponent(commentId)}`, {}, token);
 export const submitReview = (token: string, commentId: string, review: ReviewRequest) => request<ReviewResponse>(`/comments/${encodeURIComponent(commentId)}/review`, { method: 'POST', body: JSON.stringify(review) }, token);
+export const loadYouTubeComments = (url: string) => request<PublicYouTubeQueue>(`/public/youtube/comments?url=${encodeURIComponent(url)}`);

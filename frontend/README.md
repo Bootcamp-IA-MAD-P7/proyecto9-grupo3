@@ -19,7 +19,10 @@ Validación:
 ```bash
 npm run build
 npm run lint
+npm test
 ```
+
+La portada enlaza con `/demo` y `/moderator`. `/demo` permite consultar comentarios de YouTube a través del backend oficial; si la API no está configurada, el error no se oculta y se puede elegir un conjunto sintético etiquetado como ejemplo. Las acciones de moderación reales solo están en la ruta autenticada `/moderator`.
 
 Endpoints utilizados: `POST /auth/login`, `GET /auth/me`, `POST /auth/logout`, `GET /comments?status=PENDING&page=1&page_size=20`, `GET /comments/{comment_id}` y `POST /comments/{comment_id}/review`.
 

@@ -84,6 +84,22 @@ def test_seed_hashes_are_salted_and_reseeding_preserves_credentials(auth_client)
     assert PASSWORD.encode() not in database.path.read_bytes()
 
 
+def test_explicit_password_reset_changes_hash_and_revokes_sessions(auth_client):
+    from app.auth.repository import AuthRepository
+    from app.reset_user_password import reset_password
+
+    token = login(auth_client)["access_token"]
+    database = auth_client.app.state.database
+    reset_password(database, "moderator", "New-synthetic-password-99!")
+    assert auth_client.get("/auth/me", headers=authorization(token)).status_code == 401
+    new_login = auth_client.post("/auth/login", json={"username": "moderator", "password": "New-synthetic-password-99!"})
+    assert new_login.status_code == 200
+    with database.connect() as connection:
+        stored = connection.execute("SELECT password_hash FROM users WHERE username='moderator'").fetchone()[0]
+    assert "New-synthetic-password-99!" not in stored
+    assert AuthRepository(database).find_user("moderator").password_hash == stored
+
+
 def test_database_stores_token_digest_not_bearer_secret(auth_client):
     token = login(auth_client)["access_token"]
     with auth_client.app.state.database.connect() as connection:
