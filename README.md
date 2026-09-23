@@ -91,6 +91,28 @@ docker compose exec backend python -m app.seed_demo_users
 
 Los usuarios son `moderator` (`MODERATOR`) y `supervisor` (`SUPERVISOR`). Si ya existen, sus credenciales se conservan.
 
+Si una cuenta ya existe y necesitas elegir una contraseña nueva, restablécela explícitamente desde el mismo entorno que contiene la base configurada. El comando solicita y confirma la contraseña sin mostrarla, guarda solo su hash Argon2 y revoca sesiones previas; nunca se ejecuta al arrancar:
+
+```powershell
+cd backend
+$env:MODERATION_DATABASE_PATH = "C:\ruta\a\la\base\moderation.db" # omite esta línea si usas backend/data/local/moderation.db
+python -m app.reset_user_password moderator
+python -m app.reset_user_password supervisor
+```
+
+Con Docker, para la base del volumen local: `docker compose exec backend python -m app.reset_user_password moderator` (y repite para `supervisor`). No ejecuté estos comandos contra producción. En este proyecto no hay un volumen gestionado ni permisos de producción documentados; el despliegue necesitaría una consola segura con acceso a la misma base, o una infraestructura equivalente, antes de poder restablecer credenciales allí.
+
+La portada está en http://localhost:5173/, la demo pública en http://localhost:5173/demo y el acceso privado de moderadores en http://localhost:5173/moderator. La demo acepta enlaces HTTPS de `youtube.com` y `youtu.be` y consulta el endpoint público del backend. Si falta `MODERATION_YOUTUBE_API_KEY`, el error se muestra de forma explícita y se puede abrir un modo de ejemplo con datos sintéticos claramente etiquetados; no se simula una carga real.
+
+Para habilitar comentarios reales, crea una API key en Google Cloud, habilita **YouTube Data API v3** y configura únicamente en el servidor o en el entorno Docker:
+
+```bash
+MODERATION_YOUTUBE_API_KEY=...
+MODERATION_YOUTUBE_MAX_RESULTS=50
+```
+
+La clave nunca se expone al frontend. El backend valida el dominio, esquema e ID del vídeo, aplica un límite temporal por cliente y convierte los errores de vídeo no disponible, comentarios desactivados y cuota agotada en mensajes comprensibles. La actualización se realiza al volver a enviar el enlace y muestra la hora de la última respuesta.
+
 Para importar comentarios sintéticos, abre Swagger, ejecuta `POST /auth/login` con `supervisor`, pulsa **Authorize** y pega `Bearer <access_token>`. Después ejecuta `POST /comments/import` con:
 
 ```json
@@ -180,7 +202,7 @@ El vertical local está implementado: API con autenticación, roles, SQLite, col
 
 La validación actual incluye `150 passed`, `npm run build`, `npm run lint`, `docker compose config` y `git diff --check`.
 
-Limitaciones: SQLite y el fallback simulado no son soluciones de producción; el modelo necesita su artefacto validado; no hay integración externa ni acciones automáticas; faltan HTTPS, gestión de secretos, observabilidad, copias de seguridad, retención y controles operativos. La accesibilidad requiere auditoría manual.
+Limitaciones: SQLite y el fallback simulado no son soluciones de producción; el modelo necesita su artefacto validado; la demo pública no registra decisiones reales y no ejecuta acciones contra YouTube; faltan HTTPS terminado en infraestructura, gestión de secretos, observabilidad, copias de seguridad, retención y controles operativos. La accesibilidad requiere auditoría manual con lector de pantalla y teclado.
 
 ```bash
 python -m compileall -q backend/app src
@@ -210,6 +232,7 @@ configs/                     Configuraciones de evaluación
 - [Logistic + TF-IDF](docs/model/logistic-tfidf.md)
 - [Ensemble](docs/model/ensemble.md)
 - [Transformer](docs/model/transformer.md)
+- [Resumen de métricas para la presentación](docs/presentation-metrics.md)
 
 ## Equipo
 
